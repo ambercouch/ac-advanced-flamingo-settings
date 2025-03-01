@@ -10,7 +10,7 @@ Tested up to: 6.7
 
 Requires PHP: 7.2
 
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 
 License: GPLv2 or later
 
@@ -69,6 +69,10 @@ Settings Page - Customize Flamingo behavior and menu options.
 Enhanced Inbound Messages - Display form submission details directly in the table.
 
 == Changelog ==
+
+= 1.0.1 =
+
+Added required header
 
 = 1.0.0 =
 
