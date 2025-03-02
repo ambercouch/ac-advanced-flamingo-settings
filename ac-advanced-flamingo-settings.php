@@ -60,6 +60,15 @@ class ACAFS_Plugin {
 
         add_action('admin_menu', array($this, 'acafs_rename_flamingo_menu'), 10);
         add_action('admin_menu', array($this, 'acafs_set_flamingo_default'), 10);
+
+        // Hook into admin_menu to add the page
+        add_action('admin_menu', array($this, 'acafs_add_admin_menu'));
+
+        // Register the export function in WordPress
+        add_action('admin_post_acafs_export_flamingo_messages', array($this, 'acafs_export_flamingo_messages'));
+
+        // Register the import function in WordPress
+        add_action('admin_post_acafs_import_flamingo_messages', array($this, 'acafs_import_flamingo_messages'));
     }
 
     /**
@@ -626,6 +635,168 @@ class ACAFS_Plugin {
         echo '<a href="' . esc_url($view_link) . '" class="button button-small">' . esc_html__('View Last Message', 'ac-advanced-flamingo-settings') . '</a>';
         echo '</div>';
     }
+
+    /**
+     * Export Flamingo messages to a JSON file.
+     */
+    public function acafs_export_flamingo_messages() {
+        // Verify user permissions
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to perform this action.', 'ac-advanced-flamingo-settings'));
+        }
+
+        global $wpdb;
+
+        // Fetch all Flamingo messages
+        $messages = $wpdb->get_results("
+        SELECT * FROM {$wpdb->posts} 
+        WHERE post_type = 'flamingo_inbound'
+    ", ARRAY_A);
+
+        if (!$messages) {
+            wp_die(__('No messages found to export.', 'ac-advanced-flamingo-settings'));
+        }
+
+        // Retrieve and include post meta for each message
+        foreach ($messages as &$message) {
+            $message['meta'] = get_post_meta($message['ID']);
+        }
+
+        // Convert messages to JSON
+        $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        // Ensure proper file download headers
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="flamingo-messages.json"');
+        header('Content-Length: ' . strlen($json_data));
+
+        echo $json_data;
+        exit; // Ensure script stops execution after file download
+    }
+
+
+
+
+    /**
+     * Import Flamingo messages from a JSON file.
+     */
+    public function acafs_import_flamingo_messages() {
+        // Verify user permissions
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to perform this action.', 'ac-advanced-flamingo-settings'));
+        }
+
+        // Check if a file was uploaded
+        if (!isset($_FILES['flamingo_import_file']) || empty($_FILES['flamingo_import_file']['tmp_name'])) {
+            wp_die(__('No file uploaded. Please select a valid JSON file.', 'ac-advanced-flamingo-settings'));
+        }
+
+        // Read and decode the JSON file
+        $file_content = file_get_contents($_FILES['flamingo_import_file']['tmp_name']);
+        $messages = json_decode($file_content, true);
+
+        // Check if JSON decoding was successful
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_die(__('Invalid JSON file. Please check the format and try again.', 'ac-advanced-flamingo-settings'));
+        }
+
+        global $wpdb;
+        $imported_count = 0;
+
+        foreach ($messages as $message) {
+            // Validate message structure
+            if (!isset($message['post_title']) || !isset($message['post_content']) || !isset($message['post_date'])) {
+                continue; // Skip invalid entries
+            }
+
+            // Insert new message
+            $post_id = wp_insert_post([
+                'post_title'    => sanitize_text_field($message['post_title']),
+                'post_content'  => wp_kses_post($message['post_content']),
+                'post_status'   => 'publish',
+                'post_type'     => 'flamingo_inbound',
+                'post_date'     => $message['post_date'],
+                'post_author'   => isset($message['post_author']) ? intval($message['post_author']) : 0,
+            ]);
+
+            if (!$post_id) {
+                continue; // If post insertion fails, skip this message
+            }
+
+            // Restore form fields (_field_* meta keys)
+            if (!empty($message['meta'])) {
+                foreach ($message['meta'] as $key => $values) {
+                    foreach ($values as $value) {
+                        update_post_meta($post_id, sanitize_key($key), maybe_unserialize($value));
+                    }
+                }
+            }
+
+            // Restore `_fields` only if it's missing
+            if (!empty($message['meta']['_fields'])) {
+                $existing_fields = get_post_meta($post_id, '_fields', true);
+                if (!$existing_fields) {
+                    update_post_meta($post_id, '_fields', maybe_unserialize($message['meta']['_fields'][0]));
+                }
+            }
+
+            // Restore `_meta` only if it's missing
+            if (!empty($message['meta']['_meta'])) {
+                $existing_meta = get_post_meta($post_id, '_meta', true);
+                if (!$existing_meta) {
+                    update_post_meta($post_id, '_meta', maybe_unserialize($message['meta']['_meta'][0]));
+                }
+            }
+
+            $imported_count++;
+        }
+
+        // Redirect back to settings page with a success message
+        wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1&count=' . $imported_count));
+        exit;
+    }
+
+
+    /**
+     * Render the import/export settings page.
+     */
+    public function acafs_render_import_export_page() {
+        ?>
+      <div class="wrap">
+        <h1><?php esc_html_e('Flamingo Message Sync', 'ac-advanced-flamingo-settings'); ?></h1>
+
+        <h2><?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?></h2>
+        <p><?php esc_html_e('Download all Flamingo messages as a JSON file before migrating your site.', 'ac-advanced-flamingo-settings'); ?></p>
+        <a href="<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" class="button button-primary">
+            <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
+        </a>
+
+        <h2><?php esc_html_e('Import Messages', 'ac-advanced-flamingo-settings'); ?></h2>
+        <p><?php esc_html_e('Upload a previously exported JSON file to restore Flamingo messages.', 'ac-advanced-flamingo-settings'); ?></p>
+
+        <form method="post" enctype="multipart/form-data" action="<?php echo esc_url(admin_url('admin-post.php?action=acafs_import_flamingo_messages')); ?>">
+            <?php wp_nonce_field('acafs_import_nonce', 'acafs_import_nonce'); ?>
+          <input type="file" name="flamingo_import_file" accept=".json" required>
+          <input type="submit" class="button button-primary" value="<?php esc_attr_e('Import Messages', 'ac-advanced-flamingo-settings'); ?>">
+        </form>
+      </div>
+        <?php
+    }
+
+    /**
+     * Add the Flamingo Sync admin menu page.
+     */
+    public function acafs_add_admin_menu() {
+        add_submenu_page(
+            'flamingo', // Parent menu (Flamingo)
+            __('Flamingo Message Sync', 'ac-advanced-flamingo-settings'), // Page title
+            __('Message Sync', 'ac-advanced-flamingo-settings'), // Menu title
+            'manage_options', // Capability (only administrators can access)
+            'acafs-message-sync', // Menu slug
+            array($this, 'acafs_render_import_export_page') // Callback function to render the page
+        );
+    }
+
 
 
 
