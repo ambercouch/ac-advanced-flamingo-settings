@@ -657,8 +657,8 @@ class ACAFS_Plugin {
             $message['meta'] = get_post_meta($message['ID']);
 
             // Retrieve the associated channel (taxonomy term)
-            $terms = wp_get_post_terms($message['ID'], Flamingo_Inbound_Message::channel_taxonomy, array("fields" => "slugs"));
-            $message['channel'] = (!empty($terms) ? $terms[0] : '');
+            $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
+            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0); // Store term ID instead of slug
         }
 
         // Convert messages to JSON
@@ -672,10 +672,6 @@ class ACAFS_Plugin {
         echo $json_data;
         exit;
     }
-
-
-
-
 
     /**
      * Import Flamingo messages from a JSON file.
@@ -723,7 +719,7 @@ class ACAFS_Plugin {
                 continue; // If post insertion fails, skip this message
             }
 
-            // Restore form fields (_field_* meta keys)
+            // Restore metadata
             if (!empty($message['meta'])) {
                 foreach ($message['meta'] as $key => $values) {
                     foreach ($values as $value) {
@@ -732,20 +728,9 @@ class ACAFS_Plugin {
                 }
             }
 
-            // Restore `_fields` only if it's missing
-            if (!empty($message['meta']['_fields'])) {
-                $existing_fields = get_post_meta($post_id, '_fields', true);
-                if (!$existing_fields) {
-                    update_post_meta($post_id, '_fields', maybe_unserialize($message['meta']['_fields'][0]));
-                }
-            }
-
-            // Restore `_meta` only if it's missing
-            if (!empty($message['meta']['_meta'])) {
-                $existing_meta = get_post_meta($post_id, '_meta', true);
-                if (!$existing_meta) {
-                    update_post_meta($post_id, '_meta', maybe_unserialize($message['meta']['_meta'][0]));
-                }
+            // Assign Channel Using Term ID
+            if (!empty($message['channel_id']) && is_numeric($message['channel_id'])) {
+                wp_set_object_terms($post_id, (int) $message['channel_id'], 'flamingo_inbound_channel', false);
             }
 
             $imported_count++;
@@ -755,6 +740,8 @@ class ACAFS_Plugin {
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1&count=' . $imported_count));
         exit;
     }
+
+
 
 
     /**
