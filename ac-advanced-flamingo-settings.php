@@ -640,11 +640,6 @@ class ACAFS_Plugin {
      * Export Flamingo messages to a JSON file.
      */
     public function acafs_export_flamingo_messages() {
-        // Verify user permissions
-        if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission to perform this action.', 'ac-advanced-flamingo-settings'));
-        }
-
         global $wpdb;
 
         // Fetch all Flamingo messages
@@ -657,22 +652,27 @@ class ACAFS_Plugin {
             wp_die(__('No messages found to export.', 'ac-advanced-flamingo-settings'));
         }
 
-        // Retrieve and include post meta for each message
+        // Get post meta and channel taxonomy for each message
         foreach ($messages as &$message) {
             $message['meta'] = get_post_meta($message['ID']);
+
+            // Retrieve the associated channel (taxonomy term)
+            $terms = wp_get_post_terms($message['ID'], Flamingo_Inbound_Message::channel_taxonomy, array("fields" => "slugs"));
+            $message['channel'] = (!empty($terms) ? $terms[0] : '');
         }
 
         // Convert messages to JSON
         $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        // Ensure proper file download headers
+        // Set headers for file download
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Disposition: attachment; filename="flamingo-messages.json"');
         header('Content-Length: ' . strlen($json_data));
 
         echo $json_data;
-        exit; // Ensure script stops execution after file download
+        exit;
     }
+
 
 
 
