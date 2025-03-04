@@ -15,7 +15,7 @@
 defined('ABSPATH') or die('You do not have the required permissions');
 
 // Define plugin constants globally for accessibility
-if (!defined('ACAFS_VERSION')) define('ACAFS_VERSION', '1.0.0');
+if (!defined('ACAFS_VERSION')) define('ACAFS_VERSION', '1.1.0');
 if (!defined('ACAFS_PLUGIN')) define('ACAFS_PLUGIN', __FILE__);
 if (!defined('ACAFS_PREFIX')) define('ACAFS_PREFIX', 'acafs_');
 
@@ -45,7 +45,6 @@ class ACAFS_Plugin {
         register_deactivation_hook(ACAFS_PLUGIN, [$this, 'acafs_deactivate']);
 
         // Load settings and admin menu
-        add_action('admin_menu', [$this, 'acafs_register_settings_page']);
         add_action('admin_init', [$this, 'acafs_register_plugin_settings']);
 
         add_action('admin_init', array($this, 'acafs_list_tables'));
@@ -541,14 +540,12 @@ class ACAFS_Plugin {
         return $meta_keys;
     }
 
-
-
     /**
      * Enqueue admin styles for the settings page.
      */
     public function acafs_admin_styles($hook) {
 
-        if ($hook !== 'settings_page_acafs-settings') {
+        if ($hook !== 'flamingo_page_acafs-settings') {
             return;
         }
 
@@ -763,39 +760,75 @@ class ACAFS_Plugin {
     public function acafs_render_import_export_page() {
         ?>
       <div class="wrap">
-        <h1><?php esc_html_e('Flamingo Message Sync', 'ac-advanced-flamingo-settings'); ?></h1>
+        <h1><?php esc_html_e('Import/Export Inbound Messages', 'ac-advanced-flamingo-settings'); ?></h1>
 
-        <h2><?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?></h2>
-        <p><?php esc_html_e('Download all Flamingo messages as a JSON file before migrating your site.', 'ac-advanced-flamingo-settings'); ?></p>
-        <a href="<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" class="button button-primary">
-            <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
-        </a>
+        <div id="poststuff">
+          <div id="post-body" class="metabox-holder columns-2">
 
-        <h2><?php esc_html_e('Import Messages', 'ac-advanced-flamingo-settings'); ?></h2>
-        <p><?php esc_html_e('Upload a previously exported JSON file to restore Flamingo messages.', 'ac-advanced-flamingo-settings'); ?></p>
+            <!-- Export Section -->
+            <div class="postbox">
+              <div class="postbox-header">
+                <h2 class="hndle"><?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?></h2>
+              </div>
+              <div class="inside">
+                <p><?php esc_html_e('Download all Flamingo messages as a JSON file before migrating your site.', 'ac-advanced-flamingo-settings'); ?></p>
+                <a href="<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" class="button button-primary">
+                    <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
+                </a>
+              </div>
+            </div>
 
-        <form method="post" enctype="multipart/form-data" action="<?php echo esc_url(admin_url('admin-post.php?action=acafs_import_flamingo_messages')); ?>">
-            <?php wp_nonce_field('acafs_import_nonce', 'acafs_import_nonce'); ?>
-          <input type="file" name="flamingo_import_file" accept=".json" required>
-          <input type="submit" class="button button-primary" value="<?php esc_attr_e('Import Messages', 'ac-advanced-flamingo-settings'); ?>">
-        </form>
+            <!-- Import Section -->
+            <div class="postbox">
+              <div class="postbox-header">
+                <h2 class="hndle"><?php esc_html_e('Import Messages', 'ac-advanced-flamingo-settings'); ?></h2>
+              </div>
+              <div class="inside">
+                <p><?php esc_html_e('Upload a previously exported JSON file to restore Flamingo messages.', 'ac-advanced-flamingo-settings'); ?></p>
+
+                <form method="post" enctype="multipart/form-data" action="<?php echo esc_url(admin_url('admin-post.php?action=acafs_import_flamingo_messages')); ?>">
+                    <?php wp_nonce_field('acafs_import_nonce', 'acafs_import_nonce'); ?>
+                  <input type="file" name="flamingo_import_file" accept=".json" required>
+                  <input type="submit" class="button button-primary" value="<?php esc_attr_e('Import Messages', 'ac-advanced-flamingo-settings'); ?>">
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
         <?php
     }
 
+
     /**
-     * Add the Flamingo Sync admin menu page.
+     * Add the Settings and Sync pages to the Flamingo menu.
      */
     public function acafs_add_admin_menu() {
+
+        // Add Message Sync page under Flamingo
         add_submenu_page(
             'flamingo', // Parent menu (Flamingo)
-            __('Flamingo Message Sync', 'ac-advanced-flamingo-settings'), // Page title
-            __('Message Sync', 'ac-advanced-flamingo-settings'), // Menu title
-            'manage_options', // Capability (only administrators can access)
+            __('Import/Export Inbound Messages', 'ac-advanced-flamingo-settings'), // Page title
+            __('Import/Export', 'ac-advanced-flamingo-settings'), // Menu title
+            'manage_options', // Capability
             'acafs-message-sync', // Menu slug
-            array($this, 'acafs_render_import_export_page') // Callback function to render the page
+            array($this, 'acafs_render_import_export_page') // Callback function
         );
+
+        // Add Settings page under Flamingo
+        add_submenu_page(
+            'flamingo', // Parent menu (Flamingo)
+            __('Advanced Flamingo Settings', 'ac-advanced-flamingo-settings'), // Page title
+            __('Settings', 'ac-advanced-flamingo-settings'), // Menu title
+            'manage_options', // Capability (admin access only)
+            'acafs-settings', // Menu slug
+            array($this, 'acafs_render_settings_page') // Callback function
+        );
+
+
     }
+
 
 
 
