@@ -4,7 +4,7 @@
  * Plugin Name:       AC Advanced Flamingo Settings
  * Requires Plugins:  flamingo
  * Description:       Enhances and extends the functionality of the CF7 Flamingo plugin by adding advanced settings and customization options for better contact form data management.
- * Version:           1.0.1
+ * Version:           1.1.0
  * Author:            AmberCouch
  * Author URI:        https://ambercouch.co.uk/
  * License:           GPLv2 or later
@@ -69,6 +69,9 @@ class ACAFS_Plugin {
 
         // Register the import function in WordPress
         add_action('admin_post_acafs_import_flamingo_messages', array($this, 'acafs_import_flamingo_messages'));
+
+        // Hook into the plugin action links filter
+        add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'acafs_add_settings_link'));
     }
 
     /**
@@ -120,6 +123,16 @@ class ACAFS_Plugin {
             <p><a href="'. esc_url($activate_url) .'" class="button button-primary">Activate Flamingo</a></p>
           </div>';
     }
+
+    /**
+     * Add a "Settings" link to the plugin list page.
+     */
+    public function acafs_add_settings_link($links) {
+        $settings_link = '<a href="' . admin_url('admin.php?page=acafs-settings') . '">' . __('Settings', 'ac-advanced-flamingo-settings') . '</a>';
+        array_unshift($links, $settings_link);
+        return $links;
+    }
+
 
     /**
      * Sanitize checkbox input (1 or 0).
