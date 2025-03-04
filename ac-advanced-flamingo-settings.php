@@ -132,7 +132,6 @@ class ACAFS_Plugin {
         return $links;
     }
 
-
     /**
      * Sanitize checkbox input (1 or 0).
      */
@@ -148,7 +147,6 @@ class ACAFS_Plugin {
 
         return in_array($input, $valid_options, true) ? $input : 'flamingo_inbound';
     }
-
 
     /**
      * Add a custom column to display submission details.
@@ -354,7 +352,6 @@ class ACAFS_Plugin {
         echo '</label>';
     }
 
-
     /**
      * Callback function to display the text field for renaming Flamingo in the admin menu.
      */
@@ -382,7 +379,6 @@ class ACAFS_Plugin {
       </select>
         <?php
     }
-
 
     /**
      * Remove the Address Book menu if the option is enabled.
@@ -448,7 +444,6 @@ class ACAFS_Plugin {
         }
     }
 
-
     /**
      * Change Flamingo default page to Inbound Messages or Address Book.
      */
@@ -472,7 +467,6 @@ class ACAFS_Plugin {
             }
         }
     }
-
 
     /**
      * Callback function to display checkboxes for available fields.
