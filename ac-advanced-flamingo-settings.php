@@ -71,6 +71,13 @@ class ACAFS_Plugin {
 
         // Hook into the plugin action links filter
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'acafs_add_settings_link'));
+
+        // Hook to display notice
+        add_action('admin_notices', array($this, 'acafs_show_export_notice'));
+
+        // Hook to display notice
+        add_action('admin_notices', array($this, 'acafs_show_import_notice'));
+
     }
 
     /**
@@ -641,19 +648,20 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Export Flamingo messages to a JSON file.
+     * Export Flamingo messages to a JSON file (Inbox Only).
      */
     public function acafs_export_flamingo_messages() {
         global $wpdb;
 
-        // Fetch all Flamingo messages
+        // Fetch only Flamingo messages that are in the inbox (not spam or trash)
         $messages = $wpdb->get_results("
         SELECT * FROM {$wpdb->posts} 
         WHERE post_type = 'flamingo_inbound'
+        AND post_status = 'publish'
     ", ARRAY_A);
 
         if (!$messages) {
-            wp_die(__('No messages found to export.', 'ac-advanced-flamingo-settings'));
+            wp_die(__('No inbox messages found to export.', 'ac-advanced-flamingo-settings'));
         }
 
         // Get post meta and channel taxonomy for each message
@@ -665,10 +673,36 @@ class ACAFS_Plugin {
             $message['channel_id'] = (!empty($terms) ? $terms[0] : 0); // Store term ID instead of slug
         }
 
-        // Convert messages to JSON
+        // Store success message count in transient for later display
+        set_transient('acafs_export_success', count($messages), 30);
+
+        // Generate file URL and redirect back to settings page
+        $export_file_url = admin_url('admin-post.php?action=acafs_download_export_file');
+        wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1&file=' . urlencode($export_file_url)));
+        exit;
+    }
+
+    /**
+     * Serve the exported file for download.
+     */
+    public function acafs_download_export_file() {
+        global $wpdb;
+
+        // Fetch only Flamingo messages that are in the inbox (not spam or trash)
+        $messages = $wpdb->get_results("
+        SELECT * FROM {$wpdb->posts} 
+        WHERE post_type = 'flamingo_inbound'
+        AND post_status = 'publish'
+    ", ARRAY_A);
+
+        foreach ($messages as &$message) {
+            $message['meta'] = get_post_meta($message['ID']);
+            $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
+            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
+        }
+
         $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        // Set headers for file download
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Disposition: attachment; filename="flamingo-messages.json"');
         header('Content-Length: ' . strlen($json_data));
@@ -676,6 +710,23 @@ class ACAFS_Plugin {
         echo $json_data;
         exit;
     }
+
+
+    /**
+     * Display success message after export.
+     */
+    public function acafs_show_export_notice() {
+        if ($count = get_transient('acafs_export_success')) {
+            echo '<div class="notice notice-success is-dismissible">
+                <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
+                <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>
+              </div>';
+            delete_transient('acafs_export_success');
+        }
+    }
+
+
+
 
     /**
      * Import Flamingo messages from a JSON file.
@@ -740,10 +791,28 @@ class ACAFS_Plugin {
             $imported_count++;
         }
 
+        // Store success message count in transient for later display
+        set_transient('acafs_import_success', $imported_count, 30);
+
         // Redirect back to settings page with a success message
-        wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1&count=' . $imported_count));
+        wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1'));
         exit;
     }
+
+    /**
+     * Display success message after import.
+     */
+    public function acafs_show_import_notice() {
+        if ($count = get_transient('acafs_import_success')) {
+            echo '<div class="notice notice-success is-dismissible">
+                <h2 style="margin-bottom: 5px;">' . esc_html__('Import Complete', 'ac-advanced-flamingo-settings') . '</h2>
+                <p>' . sprintf(esc_html__('%s messages imported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>
+                </div>';
+            delete_transient('acafs_import_success');
+        }
+    }
+
+
 
 
 
