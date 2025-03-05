@@ -667,20 +667,21 @@ class ACAFS_Plugin {
         // Get post meta and channel taxonomy for each message
         foreach ($messages as &$message) {
             $message['meta'] = get_post_meta($message['ID']);
-
-            // Retrieve the associated channel (taxonomy term)
             $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
-            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0); // Store term ID instead of slug
+            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
         }
 
-        // Store success message count in transient for later display
-        set_transient('acafs_export_success', count($messages), 30);
+        $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        // Generate file URL and redirect back to settings page
-        $export_file_url = admin_url('admin-post.php?action=acafs_download_export_file');
-        wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1&file=' . urlencode($export_file_url)));
+        // Set headers for file download
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="flamingo-messages.json"');
+        header('Content-Length: ' . strlen($json_data));
+
+        echo $json_data;
         exit;
     }
+
 
     /**
      * Serve the exported file for download.
@@ -729,7 +730,7 @@ class ACAFS_Plugin {
 
 
     /**
-     * Import Flamingo messages from a JSON file.
+     * Import Flamingo messages from a JSON file, skipping duplicates.
      */
     public function acafs_import_flamingo_messages() {
         // Verify user permissions
@@ -753,11 +754,24 @@ class ACAFS_Plugin {
 
         global $wpdb;
         $imported_count = 0;
+        $skipped_count = 0;
 
         foreach ($messages as $message) {
             // Validate message structure
             if (!isset($message['post_title']) || !isset($message['post_content']) || !isset($message['post_date'])) {
                 continue; // Skip invalid entries
+            }
+
+            // Check if message already exists in Flamingo (Prevent Duplicates)
+            $existing_post_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'flamingo_inbound' AND post_title = %s AND post_content = %s",
+                sanitize_text_field($message['post_title']),
+                wp_kses_post($message['post_content'])
+            ));
+
+            if ($existing_post_id) {
+                $skipped_count++; // Message already exists, skip it
+                continue;
             }
 
             // Insert new message
@@ -791,8 +805,9 @@ class ACAFS_Plugin {
             $imported_count++;
         }
 
-        // Store success message count in transient for later display
+        // Store success and skipped message count in transient for later display
         set_transient('acafs_import_success', $imported_count, 30);
+        set_transient('acafs_import_skipped', $skipped_count, 30);
 
         // Redirect back to settings page with a success message
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1'));
@@ -800,17 +815,29 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Display success message after import.
+     * Display success message after import, including skipped messages.
      */
     public function acafs_show_import_notice() {
-        if ($count = get_transient('acafs_import_success')) {
+        $imported_count = get_transient('acafs_import_success');
+        $skipped_count = get_transient('acafs_import_skipped');
+
+        if ($imported_count || $skipped_count) {
             echo '<div class="notice notice-success is-dismissible">
                 <h2 style="margin-bottom: 5px;">' . esc_html__('Import Complete', 'ac-advanced-flamingo-settings') . '</h2>
-                <p>' . sprintf(esc_html__('%s messages imported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>
-                </div>';
+                <p>' . sprintf(esc_html__('%s messages imported successfully.', 'ac-advanced-flamingo-settings'), $imported_count) . '</p>';
+
+            if ($skipped_count) {
+                echo '<p>' . sprintf(esc_html__('%s messages were skipped because they already exist.', 'ac-advanced-flamingo-settings'), $skipped_count) . '</p>';
+            }
+
+            echo '</div>';
+
+            // Delete transients after displaying message
             delete_transient('acafs_import_success');
+            delete_transient('acafs_import_skipped');
         }
     }
+
 
 
 
