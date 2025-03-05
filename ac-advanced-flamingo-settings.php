@@ -648,20 +648,33 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Export Flamingo messages to a JSON file (Inbox Only).
+     * Export Flamingo messages to a JSON file, filtered by date range.
      */
     public function acafs_export_flamingo_messages() {
         global $wpdb;
 
-        // Fetch only Flamingo messages that are in the inbox (not spam or trash)
+        // Get date range from the request
+        $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+        $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+
+        // Construct date filter SQL if a range is provided
+        $date_filter = '';
+        if (!empty($start_date) && !empty($end_date)) {
+            $date_filter = $wpdb->prepare("AND post_date BETWEEN %s AND %s", $start_date . ' 00:00:00', $end_date . ' 23:59:59');
+        }
+
+        // Fetch Flamingo messages within the date range
         $messages = $wpdb->get_results("
         SELECT * FROM {$wpdb->posts} 
         WHERE post_type = 'flamingo_inbound'
         AND post_status = 'publish'
+        $date_filter
     ", ARRAY_A);
 
         if (!$messages) {
-            wp_die(__('No inbox messages found to export.', 'ac-advanced-flamingo-settings'));
+            set_transient('acafs_export_success', 0, 30);
+            wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
+            exit;
         }
 
         // Get post meta and channel taxonomy for each message
@@ -671,46 +684,27 @@ class ACAFS_Plugin {
             $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
         }
 
+        // Store export success count for notification
+        set_transient('acafs_export_success', count($messages), 30);
+
+        // Generate file name with date range
+        $file_name = 'flamingo-messages';
+        if (!empty($start_date) && !empty($end_date)) {
+            $file_name .= "-{$start_date}_to_{$end_date}";
+        }
+        $file_name .= '.json';
+
         $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         // Set headers for file download
         header('Content-Type: application/json; charset=utf-8');
-        header('Content-Disposition: attachment; filename="flamingo-messages.json"');
+        header('Content-Disposition: attachment; filename="' . $file_name . '"');
         header('Content-Length: ' . strlen($json_data));
 
         echo $json_data;
         exit;
     }
 
-
-    /**
-     * Serve the exported file for download.
-     */
-    public function acafs_download_export_file() {
-        global $wpdb;
-
-        // Fetch only Flamingo messages that are in the inbox (not spam or trash)
-        $messages = $wpdb->get_results("
-        SELECT * FROM {$wpdb->posts} 
-        WHERE post_type = 'flamingo_inbound'
-        AND post_status = 'publish'
-    ", ARRAY_A);
-
-        foreach ($messages as &$message) {
-            $message['meta'] = get_post_meta($message['ID']);
-            $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
-            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
-        }
-
-        $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-        header('Content-Type: application/json; charset=utf-8');
-        header('Content-Disposition: attachment; filename="flamingo-messages.json"');
-        header('Content-Length: ' . strlen($json_data));
-
-        echo $json_data;
-        exit;
-    }
 
 
     /**
@@ -718,15 +712,20 @@ class ACAFS_Plugin {
      */
     public function acafs_show_export_notice() {
         if ($count = get_transient('acafs_export_success')) {
-            echo '<div class="notice notice-success is-dismissible">
+            if ($count > 0) {
+                echo '<div class="notice notice-success is-dismissible">
                 <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
                 <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>
               </div>';
+            } else {
+                echo '<div class="notice notice-warning is-dismissible">
+                <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
+                <p>' . esc_html__('No messages found for the selected date range.', 'ac-advanced-flamingo-settings') . '</p>
+              </div>';
+            }
             delete_transient('acafs_export_success');
         }
     }
-
-
 
 
     /**
@@ -838,19 +837,15 @@ class ACAFS_Plugin {
         }
     }
 
-
-
-
-
-
-
     /**
-     * Render the import/export settings page.
+     * Render the import/export settings page with transient notifications and JS feedback.
      */
     public function acafs_render_import_export_page() {
         ?>
       <div class="wrap">
         <h1><?php esc_html_e('Import/Export Inbound Messages', 'ac-advanced-flamingo-settings'); ?></h1>
+
+          <?php $this->acafs_show_export_notice(); ?>
 
         <div id="poststuff">
           <div id="post-body" class="metabox-holder columns-2">
@@ -861,10 +856,21 @@ class ACAFS_Plugin {
                 <h2 class="hndle"><?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?></h2>
               </div>
               <div class="inside">
-                <p><?php esc_html_e('Download all Flamingo messages as a JSON file before migrating your site.', 'ac-advanced-flamingo-settings'); ?></p>
-                <a href="<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" class="button button-primary">
-                    <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
-                </a>
+                <p><?php esc_html_e('Download Flamingo messages as a JSON file. You can select a date range to export specific messages.', 'ac-advanced-flamingo-settings'); ?></p>
+
+                <form id="acafs-export-form">
+                  <label for="start_date"><?php esc_html_e('Start Date:', 'ac-advanced-flamingo-settings'); ?></label>
+                  <input type="date" name="start_date" id="start_date" value="<?php echo esc_attr(date('Y-m-01')); ?>">
+
+                  <label for="end_date"><?php esc_html_e('End Date:', 'ac-advanced-flamingo-settings'); ?></label>
+                  <input type="date" name="end_date" id="end_date" value="<?php echo esc_attr(date('Y-m-d')); ?>">
+
+                  <button type="submit" class="button button-primary">
+                      <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
+                  </button>
+                </form>
+
+                <div id="acafs-export-feedback" style="margin-top: 10px;"></div>
               </div>
             </div>
 
@@ -886,9 +892,39 @@ class ACAFS_Plugin {
 
           </div>
         </div>
+
+        <script>
+            document.getElementById("acafs-export-form").addEventListener("submit", function(e) {
+                e.preventDefault();
+
+                var startDate = document.getElementById("start_date").value;
+                var endDate = document.getElementById("end_date").value;
+
+                var exportUrl = "<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" +
+                    "&start_date=" + encodeURIComponent(startDate) +
+                    "&end_date=" + encodeURIComponent(endDate);
+
+                // Show feedback before download starts
+                var feedback = document.getElementById("acafs-export-feedback");
+                feedback.innerHTML = "<p><strong>Exporting messages...</strong></p>";
+
+                setTimeout(function() {
+                    feedback.innerHTML = "<p><strong>Export complete! Your file has been downloaded.</strong></p>";
+                }, 2000);
+
+                // Trigger the file download
+                window.location.href = exportUrl;
+
+                // Reload page after download to show transient message
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3000);
+            });
+        </script>
       </div>
         <?php
     }
+
 
 
     /**
