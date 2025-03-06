@@ -668,14 +668,14 @@ class ACAFS_Plugin {
         }
 
         // Count total messages
-        $total_messages = $wpdb->get_var("
+        $total_messages = (int) $wpdb->get_var("
         SELECT COUNT(*) FROM {$wpdb->posts} 
         WHERE post_type = 'flamingo_inbound' 
         AND post_status = 'publish' 
         $date_filter
     ");
 
-        if (!$total_messages) {
+        if ($total_messages === 0) {
             set_transient('acafs_export_success', 0, 30);
             wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
             exit;
@@ -720,26 +720,11 @@ class ACAFS_Plugin {
         file_put_contents($file_path, json_encode($all_messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         // End timing file creation
-        $file_end_time = microtime(true);
-        $file_creation_time = $file_end_time - $file_start_time;
+        $file_creation_time = microtime(true) - $file_start_time;
 
         // Store file URL in transient BEFORE redirect
         set_transient('acafs_export_file', $upload_dir['baseurl'] . '/' . $file_name, 30);
-
-        // Delete any existing transient before setting a new one
-        delete_transient('acafs_export_success');
-
-        // Set new transient and immediately fetch it from the database
         set_transient('acafs_export_success', $total_messages, 5 * MINUTE_IN_SECONDS);
-
-        // Force WordPress to refresh cached options
-        wp_cache_delete('acafs_export_success', 'options');
-
-        // Force MySQL to commit the transaction immediately
-        $wpdb->query("COMMIT;");
-
-        // Debugging: Check if the transient exists before redirecting
-        $check_transient = $wpdb->get_var("SELECT option_value FROM {$wpdb->options} WHERE option_name = '_transient_acafs_export_success'");
 
         // Redirect after confirming transient exists
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
@@ -751,11 +736,6 @@ class ACAFS_Plugin {
      * Display success message after export.
      */
     public function acafs_show_export_notice() {
-        global $wpdb;
-
-        // Force retrieval directly from the database
-        wp_cache_delete('acafs_export_success', 'options');
-        sleep(1); // Give MySQL time to commit
         $export_status = get_transient('acafs_export_success');
 
         if (!empty($export_status)) {
@@ -1013,8 +993,6 @@ class ACAFS_Plugin {
       </div>
         <?php
     }
-
-
 
 
     /**
