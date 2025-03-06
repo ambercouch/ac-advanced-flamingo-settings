@@ -941,6 +941,8 @@ class ACAFS_Plugin {
                 var exportAllCheckbox = document.getElementById("export_all");
                 var dateFilters = document.getElementById("date-filters");
                 var messageCount = document.getElementById("message-count");
+                var feedbackDiv = document.getElementById("acafs-export-feedback");
+                var exportForm = document.getElementById("acafs-export-form");
 
                 function updateMessageCount() {
                     var startDate = startDateInput.value;
@@ -954,7 +956,8 @@ class ACAFS_Plugin {
                         .then(response => response.text())
                         .then(count => {
                             messageCount.innerHTML = "<?php esc_html_e('Messages to be exported:', 'ac-advanced-flamingo-settings'); ?> " + count;
-                        });
+                        })
+                        .catch(error => console.error("Message count fetch error:", error));
                 }
 
                 exportAllCheckbox.addEventListener("change", function() {
@@ -965,30 +968,27 @@ class ACAFS_Plugin {
                 startDateInput.addEventListener("change", updateMessageCount);
                 endDateInput.addEventListener("change", updateMessageCount);
 
-                document.getElementById("acafs-export-form").addEventListener("submit", function(e) {
-                    e.preventDefault();
+                exportForm.addEventListener("submit", function(e) {
+                    e.preventDefault(); // Prevent default submission
 
                     var startDate = startDateInput.value;
                     var endDate = endDateInput.value;
                     var exportAll = exportAllCheckbox.checked ? 1 : 0;
 
-                    var exportUrl = "<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" +
+                    feedbackDiv.innerHTML = "<p><strong>Exporting messages... Please wait.</strong></p>";
+
+                    // **Manually update form action URL to include parameters**
+                    exportForm.action = "<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" +
                         "&start_date=" + encodeURIComponent(startDate) +
                         "&end_date=" + encodeURIComponent(endDate) +
                         "&export_all=" + exportAll;
 
-                    document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Exporting messages...</strong></p>";
-
-                    setTimeout(function() {
-                        document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Export complete! Your download link is being prepared.</strong></p>";
-                    }, 2000);
-
-                    window.location.href = exportUrl;
-
+                    exportForm.submit(); // Submit the form normally
                 });
 
                 updateMessageCount();
             });
+
         </script>
       </div>
         <?php
