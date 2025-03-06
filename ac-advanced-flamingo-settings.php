@@ -78,6 +78,9 @@ class ACAFS_Plugin {
         // Hook to display notice
         add_action('admin_notices', array($this, 'acafs_show_import_notice'));
 
+        add_action('admin_post_acafs_get_message_count', array($this, 'acafs_get_message_count'));
+        add_action('admin_post_nopriv_acafs_get_message_count', array($this, 'acafs_get_message_count'));
+
     }
 
     /**
@@ -648,7 +651,7 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Export Flamingo messages to a JSON file, filtered by date range.
+     * Export Flamingo messages to a JSON file and save it to the server.
      */
     public function acafs_export_flamingo_messages() {
         global $wpdb;
@@ -656,10 +659,11 @@ class ACAFS_Plugin {
         // Get date range from the request
         $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
         $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+        $export_all = isset($_GET['export_all']) ? intval($_GET['export_all']) : 0;
 
         // Construct date filter SQL if a range is provided
         $date_filter = '';
-        if (!empty($start_date) && !empty($end_date)) {
+        if (!$export_all && !empty($start_date) && !empty($end_date)) {
             $date_filter = $wpdb->prepare("AND post_date BETWEEN %s AND %s", $start_date . ' 00:00:00', $end_date . ' 23:59:59');
         }
 
@@ -684,48 +688,58 @@ class ACAFS_Plugin {
             $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
         }
 
-        // Store export success count for notification
-        set_transient('acafs_export_success', count($messages), 30);
-
-        // Generate file name with date range
-        $file_name = 'flamingo-messages';
-        if (!empty($start_date) && !empty($end_date)) {
-            $file_name .= "-{$start_date}_to_{$end_date}";
-        }
-        $file_name .= '.json';
-
+        // Generate JSON data
         $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-        // Set headers for file download
-        header('Content-Type: application/json; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $file_name . '"');
-        header('Content-Length: ' . strlen($json_data));
+        // Generate unique filename with date range
+        $file_name = 'flamingo-messages';
+        if (!$export_all && !empty($start_date) && !empty($end_date)) {
+            $file_name .= "-{$start_date}_to_{$end_date}";
+        }
+        $file_name .= '-' . time() . '.json';
 
-        echo $json_data;
+        // Define file path
+        $upload_dir = wp_upload_dir();
+        $file_path = trailingslashit($upload_dir['basedir']) . $file_name;
+
+        // Save JSON file to server
+        file_put_contents($file_path, $json_data);
+
+        // Store file URL in transient
+        set_transient('acafs_export_file', $upload_dir['baseurl'] . '/' . $file_name, 30);
+        set_transient('acafs_export_success', count($messages), 30);
+
+        // Redirect back to settings page
+        wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
         exit;
     }
 
 
 
+
     /**
-     * Display success message after export.
+     * Display success message after export with a download link.
      */
     public function acafs_show_export_notice() {
-        if ($count = get_transient('acafs_export_success')) {
-            if ($count > 0) {
-                echo '<div class="notice notice-success is-dismissible">
+        $count = get_transient('acafs_export_success');
+        $file_url = get_transient('acafs_export_file');
+
+        if ($count !== false) {
+            echo '<div class="notice notice-success is-dismissible">
                 <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
-                <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>
-              </div>';
-            } else {
-                echo '<div class="notice notice-warning is-dismissible">
-                <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
-                <p>' . esc_html__('No messages found for the selected date range.', 'ac-advanced-flamingo-settings') . '</p>
-              </div>';
+                <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>';
+
+            if ($file_url) {
+                echo '<p><a href="' . esc_url($file_url) . '" class="button button-primary" download>' . esc_html__('Download Exported File', 'ac-advanced-flamingo-settings') . '</a></p>';
             }
+
+            echo '</div>';
+
             delete_transient('acafs_export_success');
+            delete_transient('acafs_export_file');
         }
     }
+
 
 
     /**
@@ -838,7 +852,7 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Render the import/export settings page with transient notifications and JS feedback.
+     * Render the import/export settings page with optional date filtering.
      */
     public function acafs_render_import_export_page() {
         ?>
@@ -856,14 +870,25 @@ class ACAFS_Plugin {
                 <h2 class="hndle"><?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?></h2>
               </div>
               <div class="inside">
-                <p><?php esc_html_e('Download Flamingo messages as a JSON file. You can select a date range to export specific messages.', 'ac-advanced-flamingo-settings'); ?></p>
+                <p><?php esc_html_e('Download Flamingo messages as a JSON file. You can select a date range or download all messages.', 'ac-advanced-flamingo-settings'); ?></p>
 
                 <form id="acafs-export-form">
-                  <label for="start_date"><?php esc_html_e('Start Date:', 'ac-advanced-flamingo-settings'); ?></label>
-                  <input type="date" name="start_date" id="start_date" value="<?php echo esc_attr(date('Y-m-01')); ?>">
+                  <input type="hidden" name="action" value="acafs_export_flamingo_messages">
 
-                  <label for="end_date"><?php esc_html_e('End Date:', 'ac-advanced-flamingo-settings'); ?></label>
-                  <input type="date" name="end_date" id="end_date" value="<?php echo esc_attr(date('Y-m-d')); ?>">
+                  <label>
+                    <input type="checkbox" id="export_all" name="export_all" value="1">
+                      <?php esc_html_e('Export all messages', 'ac-advanced-flamingo-settings'); ?>
+                  </label>
+
+                  <div id="date-filters">
+                    <label for="start_date"><?php esc_html_e('Start Date:', 'ac-advanced-flamingo-settings'); ?></label>
+                    <input type="date" name="start_date" id="start_date" value="<?php echo esc_attr(date('Y-m-01')); ?>">
+
+                    <label for="end_date"><?php esc_html_e('End Date:', 'ac-advanced-flamingo-settings'); ?></label>
+                    <input type="date" name="end_date" id="end_date" value="<?php echo esc_attr(date('Y-m-d')); ?>">
+                  </div>
+
+                  <p id="message-count"><?php esc_html_e('Messages to be exported: 0', 'ac-advanced-flamingo-settings'); ?></p>
 
                   <button type="submit" class="button button-primary">
                       <?php esc_html_e('Export Messages', 'ac-advanced-flamingo-settings'); ?>
@@ -894,36 +919,68 @@ class ACAFS_Plugin {
         </div>
 
         <script>
-            document.getElementById("acafs-export-form").addEventListener("submit", function(e) {
-                e.preventDefault();
+            document.addEventListener("DOMContentLoaded", function() {
+                var startDateInput = document.getElementById("start_date");
+                var endDateInput = document.getElementById("end_date");
+                var exportAllCheckbox = document.getElementById("export_all");
+                var dateFilters = document.getElementById("date-filters");
+                var messageCount = document.getElementById("message-count");
 
-                var startDate = document.getElementById("start_date").value;
-                var endDate = document.getElementById("end_date").value;
+                function updateMessageCount() {
+                    var startDate = startDateInput.value;
+                    var endDate = endDateInput.value;
+                    var exportAll = exportAllCheckbox.checked ? 1 : 0;
 
-                var exportUrl = "<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" +
-                    "&start_date=" + encodeURIComponent(startDate) +
-                    "&end_date=" + encodeURIComponent(endDate);
+                    fetch("<?php echo esc_url(admin_url('admin-post.php?action=acafs_get_message_count')); ?>" +
+                        "&start_date=" + encodeURIComponent(startDate) +
+                        "&end_date=" + encodeURIComponent(endDate) +
+                        "&export_all=" + exportAll)
+                        .then(response => response.text())
+                        .then(count => {
+                            messageCount.innerHTML = "<?php esc_html_e('Messages to be exported:', 'ac-advanced-flamingo-settings'); ?> " + count;
+                        });
+                }
 
-                // Show feedback before download starts
-                var feedback = document.getElementById("acafs-export-feedback");
-                feedback.innerHTML = "<p><strong>Exporting messages...</strong></p>";
+                exportAllCheckbox.addEventListener("change", function() {
+                    dateFilters.style.display = this.checked ? "none" : "block";
+                    updateMessageCount();
+                });
 
-                setTimeout(function() {
-                    feedback.innerHTML = "<p><strong>Export complete! Your file has been downloaded.</strong></p>";
-                }, 2000);
+                startDateInput.addEventListener("change", updateMessageCount);
+                endDateInput.addEventListener("change", updateMessageCount);
 
-                // Trigger the file download
-                window.location.href = exportUrl;
+                document.getElementById("acafs-export-form").addEventListener("submit", function(e) {
+                    e.preventDefault();
 
-                // Reload page after download to show transient message
-                setTimeout(function() {
-                    window.location.reload();
-                }, 3000);
+                    var startDate = startDateInput.value;
+                    var endDate = endDateInput.value;
+                    var exportAll = exportAllCheckbox.checked ? 1 : 0;
+
+                    var exportUrl = "<?php echo esc_url(admin_url('admin-post.php?action=acafs_export_flamingo_messages')); ?>" +
+                        "&start_date=" + encodeURIComponent(startDate) +
+                        "&end_date=" + encodeURIComponent(endDate) +
+                        "&export_all=" + exportAll;
+
+                    document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Exporting messages...</strong></p>";
+
+                    setTimeout(function() {
+                        document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Export complete! Your file has been downloaded.</strong></p>";
+                    }, 2000);
+
+                    window.location.href = exportUrl;
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 3000);
+                });
+
+                updateMessageCount();
             });
         </script>
       </div>
         <?php
     }
+
 
 
 
@@ -954,6 +1011,35 @@ class ACAFS_Plugin {
 
 
     }
+
+    /**
+     * Return the number of messages matching the selected date range.
+     */
+    public function acafs_get_message_count() {
+        global $wpdb;
+
+        $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+        $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+        $export_all = isset($_GET['export_all']) ? intval($_GET['export_all']) : 0;
+
+        $date_filter = '';
+        if (!$export_all && !empty($start_date) && !empty($end_date)) {
+            $date_filter = $wpdb->prepare("AND post_date BETWEEN %s AND %s", $start_date . ' 00:00:00', $end_date . ' 23:59:59');
+        }
+
+        $message_count = $wpdb->get_var("
+        SELECT COUNT(*) FROM {$wpdb->posts} 
+        WHERE post_type = 'flamingo_inbound'
+        AND post_status = 'publish'
+        $date_filter
+    ");
+
+        echo intval($message_count);
+        exit;
+    }
+
+
+
 
 
 
