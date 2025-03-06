@@ -651,90 +651,126 @@ class ACAFS_Plugin {
     }
 
     /**
-     * Export Flamingo messages to a JSON file and save it to the server.
+     * Export Flamingo messages to a JSON file, processing in chunks.
      */
     public function acafs_export_flamingo_messages() {
         global $wpdb;
 
-        // Get date range from the request
+        // Get date range
         $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
         $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
         $export_all = isset($_GET['export_all']) ? intval($_GET['export_all']) : 0;
 
-        // Construct date filter SQL if a range is provided
+        // Construct date filter SQL
         $date_filter = '';
         if (!$export_all && !empty($start_date) && !empty($end_date)) {
             $date_filter = $wpdb->prepare("AND post_date BETWEEN %s AND %s", $start_date . ' 00:00:00', $end_date . ' 23:59:59');
         }
 
-        // Fetch Flamingo messages within the date range
-        $messages = $wpdb->get_results("
-        SELECT * FROM {$wpdb->posts} 
-        WHERE post_type = 'flamingo_inbound'
-        AND post_status = 'publish'
+        // Count total messages
+        $total_messages = $wpdb->get_var("
+        SELECT COUNT(*) FROM {$wpdb->posts} 
+        WHERE post_type = 'flamingo_inbound' 
+        AND post_status = 'publish' 
         $date_filter
-    ", ARRAY_A);
+    ");
 
-        if (!$messages) {
+        if (!$total_messages) {
             set_transient('acafs_export_success', 0, 30);
             wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
             exit;
         }
 
-        // Get post meta and channel taxonomy for each message
-        foreach ($messages as &$message) {
-            $message['meta'] = get_post_meta($message['ID']);
-            $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
-            $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
+        // Fetch messages in chunks
+        $batch_size = 500;
+        $offset = 0;
+        $all_messages = [];
+
+        while ($offset < $total_messages) {
+            $messages = $wpdb->get_results("
+            SELECT * FROM {$wpdb->posts} 
+            WHERE post_type = 'flamingo_inbound' 
+            AND post_status = 'publish' 
+            $date_filter 
+            LIMIT $batch_size OFFSET $offset
+        ", ARRAY_A);
+
+            foreach ($messages as &$message) {
+                $message['meta'] = get_post_meta($message['ID']);
+                $terms = wp_get_post_terms($message['ID'], 'flamingo_inbound_channel', array("fields" => "ids"));
+                $message['channel_id'] = (!empty($terms) ? $terms[0] : 0);
+            }
+
+            $all_messages = array_merge($all_messages, $messages);
+            $offset += $batch_size;
         }
 
-        // Generate JSON data
-        $json_data = json_encode($messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        // Start timing file creation
+        $file_start_time = microtime(true);
 
-        // Generate unique filename with date range
+        // Save JSON file
         $file_name = 'flamingo-messages';
         if (!$export_all && !empty($start_date) && !empty($end_date)) {
             $file_name .= "-{$start_date}_to_{$end_date}";
         }
         $file_name .= '-' . time() . '.json';
 
-        // Define file path
         $upload_dir = wp_upload_dir();
         $file_path = trailingslashit($upload_dir['basedir']) . $file_name;
+        file_put_contents($file_path, json_encode($all_messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        // Save JSON file to server
-        file_put_contents($file_path, $json_data);
+        // End timing file creation
+        $file_end_time = microtime(true);
+        $file_creation_time = $file_end_time - $file_start_time;
 
-        // Store file URL in transient
+        // Store file URL in transient BEFORE redirect
         set_transient('acafs_export_file', $upload_dir['baseurl'] . '/' . $file_name, 30);
-        set_transient('acafs_export_success', count($messages), 30);
 
-        // Redirect back to settings page
+        // Delete any existing transient before setting a new one
+        delete_transient('acafs_export_success');
+
+        // Set new transient and immediately fetch it from the database
+        set_transient('acafs_export_success', $total_messages, 5 * MINUTE_IN_SECONDS);
+
+        // Force WordPress to refresh cached options
+        wp_cache_delete('acafs_export_success', 'options');
+
+        // Force MySQL to commit the transaction immediately
+        $wpdb->query("COMMIT;");
+
+        // Debugging: Check if the transient exists before redirecting
+        $check_transient = $wpdb->get_var("SELECT option_value FROM {$wpdb->options} WHERE option_name = '_transient_acafs_export_success'");
+
+        // Redirect after confirming transient exists
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&export_success=1'));
         exit;
     }
 
 
-
-
     /**
-     * Display success message after export with a download link.
+     * Display success message after export.
      */
     public function acafs_show_export_notice() {
-        $count = get_transient('acafs_export_success');
-        $file_url = get_transient('acafs_export_file');
+        global $wpdb;
 
-        if ($count !== false) {
+        // Force retrieval directly from the database
+        wp_cache_delete('acafs_export_success', 'options');
+        sleep(1); // Give MySQL time to commit
+        $export_status = get_transient('acafs_export_success');
+
+        if (!empty($export_status)) {
             echo '<div class="notice notice-success is-dismissible">
                 <h2 style="margin-bottom: 5px;">' . esc_html__('Export Complete', 'ac-advanced-flamingo-settings') . '</h2>
-                <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), $count) . '</p>';
+                <p>' . sprintf(esc_html__('%s messages exported successfully.', 'ac-advanced-flamingo-settings'), esc_html($export_status)) . '</p>';
 
-            if ($file_url) {
+            $file_url = get_transient('acafs_export_file');
+            if (!empty($file_url)) {
                 echo '<p><a href="' . esc_url($file_url) . '" class="button button-primary" download>' . esc_html__('Download Exported File', 'ac-advanced-flamingo-settings') . '</a></p>';
             }
 
             echo '</div>';
 
+            // Delete the transient immediately after displaying
             delete_transient('acafs_export_success');
             delete_transient('acafs_export_file');
         }
@@ -964,14 +1000,11 @@ class ACAFS_Plugin {
                     document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Exporting messages...</strong></p>";
 
                     setTimeout(function() {
-                        document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Export complete! Your file has been downloaded.</strong></p>";
+                        document.getElementById("acafs-export-feedback").innerHTML = "<p><strong>Export complete! Your download link is being prepared.</strong></p>";
                     }, 2000);
 
                     window.location.href = exportUrl;
 
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 3000);
                 });
 
                 updateMessageCount();
