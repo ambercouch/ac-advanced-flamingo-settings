@@ -1,0 +1,12 @@
+{
+    "require": {
+        "deliciousbrains/wp-background-processing": "^1.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "ACAFS\\": "lib/"
+        }
+    }
+}
+
+
