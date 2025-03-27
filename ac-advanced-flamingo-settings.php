@@ -84,6 +84,23 @@ class ACAFS_Plugin {
 
         add_action( 'plugins_loaded', array( $this, 'acafs_init' ) );
 
+        add_action('admin_notices', function () {
+            if ($status = get_transient('acafs_import_status')) {
+                if ($status === 'importing') {
+                    echo '<div class="notice notice-warning is-dismissible">';
+                    echo '<p>' . __('Importing Flamingo messages...', 'ac-advanced-flamingo-settings') . '</p>';
+                    echo '</div>';
+                } elseif ($status === 'completed') {
+                    echo '<div class="notice notice-success is-dismissible">';
+                    echo '<p>' . __('Import completed successfully!', 'ac-advanced-flamingo-settings') . '</p>';
+                    echo '</div>';
+
+                    // Clear the transient on dismissal
+                    delete_transient('acafs_import_status');
+                }
+            }
+        });
+
     }
 
     protected $acafs_import_messages;
@@ -769,7 +786,6 @@ class ACAFS_Plugin {
      * Import Flamingo messages from a JSON file using background processing.
      */
     public function acafs_import_flamingo_messages() {
-
         // Verify user permissions
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have permission to perform this action.', 'ac-advanced-flamingo-settings'));
@@ -784,25 +800,25 @@ class ACAFS_Plugin {
         $file_content = file_get_contents($_FILES['flamingo_import_file']['tmp_name']);
         $messages = json_decode($file_content, true);
 
-        // Check if JSON decoding was successful
         if (json_last_error() !== JSON_ERROR_NONE) {
             wp_die(__('Invalid JSON file. Please check the format and try again.', 'ac-advanced-flamingo-settings'));
         }
 
+        // Set "Importing" transient
+        set_transient('acafs_import_status', 'importing', HOUR_IN_SECONDS);
 
+        $import_process = new ACAFS_Background_Import();
         foreach ($messages as $message) {
-            $this->acafs_import_process->push_to_queue($message);
+            $import_process->push_to_queue($message);
         }
 
-        $this->acafs_import_process->save()->dispatch();
-
-        // Store import started notice
-        set_transient('acafs_import_started', 'processing', 30);
+        $import_process->save()->dispatch();
 
         // Redirect back to settings page with a notice
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_started=1'));
         exit;
     }
+
 
     /**
      * Display import status messages.
