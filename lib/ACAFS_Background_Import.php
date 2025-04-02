@@ -62,7 +62,8 @@ class ACAFS_Background_Import extends WP_Background_Process {
     }
 
     protected function complete() {
-        set_transient('acafs_import_success', 'completed', 30);
+        delete_transient('acafs_import_started'); // Clear in-progress marker
+        set_transient('acafs_import_success', 'completed');
         parent::complete();
     }
 }

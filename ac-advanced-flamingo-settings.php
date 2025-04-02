@@ -797,7 +797,7 @@ class ACAFS_Plugin {
         $this->acafs_import_process->save()->dispatch();
 
         // Store import started notice
-        set_transient('acafs_import_started', 'processing', 30);
+        set_transient('acafs_import_started', 'processing');
 
         // Redirect back to settings page with a notice
         wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_started=1'));
@@ -808,19 +808,25 @@ class ACAFS_Plugin {
      * Display import status messages.
      */
     public function acafs_show_import_notice() {
-        if (get_transient('acafs_import_started')) {
-            echo '<div class="notice notice-info is-dismissible">
-            <h2 style="margin-bottom: 5px;">' . esc_html__('Import in Progress', 'ac-advanced-flamingo-settings') . '</h2>
-            <p>' . esc_html__('Flamingo messages are being imported in the background. Please refresh the page to check progress.', 'ac-advanced-flamingo-settings') . '</p>
-        </div>';
-        }
+        $import_success = get_transient('acafs_import_success');
+        $import_started = get_transient('acafs_import_started');
 
-        if (get_transient('acafs_import_success')) {
+        if ($import_success) {
             echo '<div class="notice notice-success is-dismissible">
             <h2 style="margin-bottom: 5px;">' . esc_html__('Import Complete', 'ac-advanced-flamingo-settings') . '</h2>
             <p>' . esc_html__('All messages have been imported successfully.', 'ac-advanced-flamingo-settings') . '</p>
         </div>';
+
             delete_transient('acafs_import_success');
+            delete_transient('acafs_import_started'); // Clear in-progress transient too
+            return; // Don't show any other notice
+        }
+
+        if ($import_started) {
+            echo '<div class="notice notice-info is-dismissible">
+            <h2 style="margin-bottom: 5px;">' . esc_html__('Import in Progress', 'ac-advanced-flamingo-settings') . '</h2>
+            <p>' . esc_html__('Flamingo messages are being imported in the background. Please refresh the page to check progress.', 'ac-advanced-flamingo-settings') . '</p>
+        </div>';
         }
     }
 
