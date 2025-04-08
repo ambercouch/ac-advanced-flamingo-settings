@@ -29,6 +29,7 @@ define('ACAFS_PLUGIN_TEMPLATE_DIR', plugin_dir_path(__FILE__) . 'templates/');
 define('ACAFS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ACAFS_PLUGIN_ASSETS_URL', ACAFS_PLUGIN_URL . 'assets/');
 
+require ACAFS_PLUGIN_DIR .  '/vendor/autoload.php';
 
 class ACAFS_Plugin {
 
@@ -81,8 +82,16 @@ class ACAFS_Plugin {
         add_action('admin_post_acafs_get_message_count', array($this, 'acafs_get_message_count'));
         add_action('admin_post_nopriv_acafs_get_message_count', array($this, 'acafs_get_message_count'));
 
+        add_action( 'plugins_loaded', array( $this, 'acafs_init' ) );
+
     }
 
+    protected $acafs_import_messages;
+
+    public function acafs_init() {
+      require_once ACAFS_PLUGIN_LIB_DIR . '/ACAFS_Background_Import.php';
+      $this->acafs_import_process    = new ACAFS_Background_Import();
+    }
     /**
      * Runs on plugin activation.
      */
@@ -756,12 +765,11 @@ class ACAFS_Plugin {
         }
     }
 
-
-
     /**
-     * Import Flamingo messages from a JSON file, skipping duplicates.
+     * Import Flamingo messages from a JSON file using background processing.
      */
     public function acafs_import_flamingo_messages() {
+
         // Verify user permissions
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have permission to perform this action.', 'ac-advanced-flamingo-settings'));
@@ -781,91 +789,47 @@ class ACAFS_Plugin {
             wp_die(__('Invalid JSON file. Please check the format and try again.', 'ac-advanced-flamingo-settings'));
         }
 
-        global $wpdb;
-        $imported_count = 0;
-        $skipped_count = 0;
-
-        foreach ($messages as $message) {
-            // Validate message structure
-            if (!isset($message['post_title']) || !isset($message['post_content']) || !isset($message['post_date'])) {
-                continue; // Skip invalid entries
-            }
-
-            // Check if message already exists in Flamingo (Prevent Duplicates)
-            $existing_post_id = $wpdb->get_var($wpdb->prepare(
-                "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'flamingo_inbound' AND post_title = %s AND post_content = %s",
-                sanitize_text_field($message['post_title']),
-                wp_kses_post($message['post_content'])
-            ));
-
-            if ($existing_post_id) {
-                $skipped_count++; // Message already exists, skip it
-                continue;
-            }
-
-            // Insert new message
-            $post_id = wp_insert_post([
-                'post_title'    => sanitize_text_field($message['post_title']),
-                'post_content'  => wp_kses_post($message['post_content']),
-                'post_status'   => 'publish',
-                'post_type'     => 'flamingo_inbound',
-                'post_date'     => $message['post_date'],
-                'post_author'   => isset($message['post_author']) ? intval($message['post_author']) : 0,
-            ]);
-
-            if (!$post_id) {
-                continue; // If post insertion fails, skip this message
-            }
-
-            // Restore metadata
-            if (!empty($message['meta'])) {
-                foreach ($message['meta'] as $key => $values) {
-                    foreach ($values as $value) {
-                        update_post_meta($post_id, sanitize_key($key), maybe_unserialize($value));
-                    }
-                }
-            }
-
-            // Assign Channel Using Term ID
-            if (!empty($message['channel_id']) && is_numeric($message['channel_id'])) {
-                wp_set_object_terms($post_id, (int) $message['channel_id'], 'flamingo_inbound_channel', false);
-            }
-
-            $imported_count++;
+        $chunked_messages = array_chunk($messages, 50); // Or 10, or 50
+        foreach ($chunked_messages as $batch) {
+            $this->acafs_import_process->push_to_queue($batch);
         }
+        $this->acafs_import_process->save()->dispatch();
 
-        // Store success and skipped message count in transient for later display
-        set_transient('acafs_import_success', $imported_count, 30);
-        set_transient('acafs_import_skipped', $skipped_count, 30);
+        // Store import started notice
+        set_transient('acafs_import_started', 'processing');
 
-        // Redirect back to settings page with a success message
-        wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_success=1'));
+        // Redirect back to settings page with a notice
+        wp_redirect(admin_url('admin.php?page=acafs-message-sync&import_started=1'));
         exit;
     }
 
     /**
-     * Display success message after import, including skipped messages.
+     * Display import status messages.
      */
     public function acafs_show_import_notice() {
-        $imported_count = get_transient('acafs_import_success');
-        $skipped_count = get_transient('acafs_import_skipped');
+        $import_success = get_transient('acafs_import_success');
+        $import_started = get_transient('acafs_import_started');
 
-        if ($imported_count || $skipped_count) {
+        if ($import_success) {
             echo '<div class="notice notice-success is-dismissible">
-                <h2 style="margin-bottom: 5px;">' . esc_html__('Import Complete', 'ac-advanced-flamingo-settings') . '</h2>
-                <p>' . sprintf(esc_html__('%s messages imported successfully.', 'ac-advanced-flamingo-settings'), $imported_count) . '</p>';
+            <h2 style="margin-bottom: 5px;">' . esc_html__('Import Complete', 'ac-advanced-flamingo-settings') . '</h2>
+            <p>' . esc_html__('All messages have been imported successfully.', 'ac-advanced-flamingo-settings') . '</p>
+        </div>';
 
-            if ($skipped_count) {
-                echo '<p>' . sprintf(esc_html__('%s messages were skipped because they already exist.', 'ac-advanced-flamingo-settings'), $skipped_count) . '</p>';
-            }
-
-            echo '</div>';
-
-            // Delete transients after displaying message
             delete_transient('acafs_import_success');
-            delete_transient('acafs_import_skipped');
+            delete_transient('acafs_import_started'); // Clear in-progress transient too
+            return; // Don't show any other notice
+        }
+
+        if ($import_started) {
+            echo '<div class="notice notice-info is-dismissible">
+            <h2 style="margin-bottom: 5px;">' . esc_html__('Import in Progress', 'ac-advanced-flamingo-settings') . '</h2>
+            <p>' . esc_html__('Flamingo messages are being imported in the background. Please refresh the page to check progress.', 'ac-advanced-flamingo-settings') . '</p>
+        </div>';
         }
     }
+
+
 
     /**
      * Render the import/export settings page with optional date filtering.
@@ -935,6 +899,19 @@ class ACAFS_Plugin {
         </div>
 
         <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                var feedbackDiv = document.getElementById("acafs-import-feedback");
+                var importForm = document.getElementById("acafs-import-form");
+
+                importForm.addEventListener("submit", function(e) {
+                    e.preventDefault(); // Prevent default form submission
+
+                    feedbackDiv.innerHTML = "<p><strong>Importing messages... This may take a few minutes.</strong></p>";
+
+                    // Submit the form normally
+                    importForm.submit();
+                });
+            });
             document.addEventListener("DOMContentLoaded", function() {
                 var startDateInput = document.getElementById("start_date");
                 var endDateInput = document.getElementById("end_date");
@@ -1048,10 +1025,6 @@ class ACAFS_Plugin {
         echo intval($message_count);
         exit;
     }
-
-
-
-
 
 
 
