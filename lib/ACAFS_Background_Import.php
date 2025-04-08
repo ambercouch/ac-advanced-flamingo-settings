@@ -17,22 +17,47 @@ class ACAFS_Background_Import extends WP_Background_Process {
     /**
      * Process a single message import.
      */
-    protected function task($batch) {
+    protected function task($messages_batch) {
         global $wpdb;
 
-        if (!is_array($batch) || empty($batch)) {
+        if (!is_array($messages_batch) || empty($messages_batch)) {
             return false;
         }
 
-        foreach ($batch as $message) {
-            // Optimized duplicate check (see next step)
-            $existing_post_id = $wpdb->get_var($wpdb->prepare(
-                "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'flamingo_inbound' AND post_title = %s AND post_content = %s",
-                sanitize_text_field($message['post_title']),
-                wp_kses_post($message['post_content'])
-            ));
+        // Build hashes
+        $message_hashes = [];
+        foreach ($messages_batch as $msg) {
+            $hash = md5(
+                sanitize_text_field($msg['post_title']) .
+                wp_kses_post($msg['post_content'])
+            );
+            $message_hashes[$hash] = $msg;
+        }
 
-            if ($existing_post_id) {
+        // Query for existing posts by title/content (bulk match)
+        $placeholders = implode(',', array_fill(0, count($message_hashes), '%s'));
+        $titles = array_column($messages_batch, 'post_title');
+        $contents = array_column($messages_batch, 'post_content');
+
+        $existing = $wpdb->get_results($wpdb->prepare("
+        SELECT ID, post_title, post_content FROM {$wpdb->posts}
+        WHERE post_type = 'flamingo_inbound'
+        AND post_status = 'publish'
+        AND post_title IN ($placeholders)
+    ", $titles));
+
+        $existing_hashes = [];
+        foreach ($existing as $post) {
+            $existing_hash = md5(
+                sanitize_text_field($post->post_title) .
+                wp_kses_post($post->post_content)
+            );
+            $existing_hashes[] = $existing_hash;
+        }
+
+        // Now import only non-duplicates
+        foreach ($message_hashes as $hash => $message) {
+            if (in_array($hash, $existing_hashes, true)) {
                 continue; // Skip duplicate
             }
 
@@ -64,6 +89,7 @@ class ACAFS_Background_Import extends WP_Background_Process {
 
         return false;
     }
+
 
     protected function complete() {
         delete_transient('acafs_import_started'); // Clear in-progress marker
