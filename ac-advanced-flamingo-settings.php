@@ -789,11 +789,10 @@ class ACAFS_Plugin {
             wp_die(__('Invalid JSON file. Please check the format and try again.', 'ac-advanced-flamingo-settings'));
         }
 
-
-        foreach ($messages as $message) {
-            $this->acafs_import_process->push_to_queue($message);
+        $chunked_messages = array_chunk($messages, 50); // Or 10, or 50
+        foreach ($chunked_messages as $batch) {
+            $this->acafs_import_process->push_to_queue($batch);
         }
-
         $this->acafs_import_process->save()->dispatch();
 
         // Store import started notice
