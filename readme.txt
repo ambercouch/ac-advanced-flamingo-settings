@@ -5,7 +5,7 @@ Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 5.4
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -18,10 +18,12 @@ Enhance Flamingo with additional customization options!
 
 This plugin extends Flamingo, the Contact Form 7 database storage plugin, by adding powerful features for better form submission management:
 
-- **Import/Export Feature (Enhanced in 1.2.0)**
+- **Import/Export Feature (Enhanced in 1.3.0)**
   - Export Flamingo messages to a JSON file for backup or migration.
   - Import messages back into Flamingo while preserving all metadata, including the "Channel" column.
-  - **Now skips duplicate messages on import and notifies users of skipped entries.**
+  - **Now processes messages in batches for better performance on large imports.**
+  - **Significantly faster import with improved duplicate detection using content hashing.**
+  - **Clearer and more reliable admin notices for import progress and completion.**
 
 - **Enhanced Inbound Messages**
   - Display submission details directly in the Flamingo Inbound Messages list.
@@ -33,7 +35,7 @@ This plugin extends Flamingo, the Contact Form 7 database storage plugin, by add
   - Rename the Flamingo menu for better organization.
   - Optionally disable the Address Book if not needed.
 
-- **Improved Usability (New in 1.2.0)**
+- **Improved Usability**
   - A **Settings** link has been added to the WordPress **Plugins page** for quick access.
 
 This plugin is perfect for users who rely on Flamingo and need a better-organized contact log with backup and migration capabilities.
@@ -63,6 +65,7 @@ Go to **Settings → AC Flamingo** and enter your preferred name for the menu.
 - **Export**: Click "Export Messages" in **Flamingo → Message Sync** to download all Flamingo messages in a JSON file.
 - **Import**: Upload a previously exported JSON file to restore messages, including the "Channel" column.
 - **Duplicate messages are automatically skipped, and a summary is displayed after import.**
+- **Large imports are now processed in optimized batches for better performance.**
 
 == Screenshots ==
 
@@ -71,6 +74,16 @@ Go to **Settings → AC Flamingo** and enter your preferred name for the menu.
 3. **Import/Export Page** - Export and import Flamingo messages easily.
 
 == Changelog ==
+
+= 1.3.0 =
+- **Performance Improvements:**
+  - Import now processes messages in **batches of up to 50** for significant speed gains.
+  - Improved duplicate detection using content hashes and bulk SQL matching.
+- **Better Admin UX:**
+  - Import progress indicator remains active until the process finishes.
+  - Import completion notices now expire only after they are displayed.
+- **Infrastructure Enhancements:**
+  - Improved reliability of transient handling for long-running imports.
 
 = 1.2.0 =
 - **Import Function Enhancements:**
@@ -96,9 +109,8 @@ Initial release with the following features:
 
 == Upgrade Notice ==
 
-= 1.2.0 =
-This update improves the **import function** by skipping duplicate messages and displaying a summary of imported/skipped messages.
-A **Settings** link has also been added to the WordPress **Plugins page** for quick access.
+= 1.3.0 =
+Faster imports with batch processing and better duplicate detection. Import progress indicators and notifications are now more reliable for large datasets.
 
 == Support ==
 For support or feature requests, visit [https://ambercouch.co.uk/](https://ambercouch.co.uk/)
