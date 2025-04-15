@@ -81,6 +81,17 @@ class ACAFS_Admin {
      * Placeholder for rendering the import/export page
      */
     public function acafs_render_import_export_page() {
-        do_action('acafs_render_import_export_page');
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Import/Export Inbound Messages', 'ac-advanced-flamingo-settings'); ?></h1>
+            <div id="poststuff" >
+                <div id="post-body" class="metabox-holder columns-2" >
+                    <?php do_action('acafs_render_import_export_page'); ?>
+                </div>
+            </div>
+        </div>
+        <?php
     }
+
 }
+
