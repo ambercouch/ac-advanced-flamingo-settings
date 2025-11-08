@@ -32,7 +32,13 @@ define('ACAFS_PLUGIN_ASSETS_URL', ACAFS_PLUGIN_URL . 'assets/');
 require ACAFS_PLUGIN_DIR .  '/vendor/autoload.php';
 require ACAFS_PLUGIN_INC_DIR .  '/class-acafs-plugin.php';
 
+if ( class_exists(\ACAFS\Admin\Flamingo\FileLinker::class) ) {
+    (new \ACAFS\Admin\Flamingo\FileLinker())->register();
+}
+
 // Initialize the plugin
 if (class_exists('ACAFS_Plugin')) {
     new ACAFS_Plugin();
 }
+
+
