@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          coverage: none
+
+      - name: Composer install (no dev in prod build step later)
+        run: composer install --prefer-dist --no-progress
+
+      - name: PHPCS
+        run: vendor/bin/phpcs
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse
+
+      - name: Build plugin ZIP
+        run: |
+          bash ./build/build-zip.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zip
+          path: build/*.zip
