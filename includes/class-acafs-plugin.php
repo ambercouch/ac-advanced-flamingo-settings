@@ -36,6 +36,7 @@ class ACAFS_Plugin {
         require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-columns.php';
         require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-export.php';
         require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-import.php';
+        require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-single-message.php';
 
         // Background imports
         require_once ACAFS_PLUGIN_INC_DIR . 'background/class-acafs-background-import.php';
@@ -51,6 +52,7 @@ class ACAFS_Plugin {
      * Instantiate and initialize plugin modules.
      */
     private function init_modules() {
+        error_log('init_modules');
         // Background import handler
         $this->import_process = new ACAFS_Background_Import();
 
@@ -61,6 +63,7 @@ class ACAFS_Plugin {
 //
 //        // Features
         new ACAFS_Columns();
+        //new ACAFS_Single_Message();
         new ACAFS_Export( $this->import_process ); // Pass background import if needed
         new ACAFS_Import( $this->import_process );
 
