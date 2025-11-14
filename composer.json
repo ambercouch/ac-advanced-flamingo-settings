@@ -1,12 +1,27 @@
 {
+    "name": "ambercouch/ac-advanced-flamingo-settings",
+    "type": "wordpress-plugin",
     "require": {
+        "php": ">=7.4",
         "deliciousbrains/wp-background-processing": "^1.4"
     },
     "autoload": {
         "psr-4": {
             "ACAFS\\": "lib/"
         }
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.10",
+        "phpstan/phpstan": "^1.11",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "wp-coding-standards/wpcs": "^3.1"
+    },
+    "scripts": {
+        "lint": "phpcs",
+        "fix": "phpcbf",
+        "stan": "phpstan analyse"
+    },
+    "extra": {
+        "phpcodesniffer-standard": "WordPress-Extra"
     }
 }
-
-

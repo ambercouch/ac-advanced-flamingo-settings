@@ -1,0 +1,43 @@
+name: Deploy to WordPress.org
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      # Build a production-ready folder (vendor, no dev deps)
+      - name: Install deps (prod)
+        run: composer install --no-dev --prefer-dist --optimize-autoloader
+
+      # Optional: run your checks again
+      - name: Lint
+        run: composer lint
+
+      - name: PHPStan
+        run: composer stan
+
+      # Deploy
+      - name: Deploy to WordPress.org SVN
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          # If your slug != repo name, set it (or use a secret/var)
+          slug: ac-advanced-flamingo-settings
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
