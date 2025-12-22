@@ -36,8 +36,7 @@ jobs:
       - name: Deploy to WordPress.org SVN
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
-          # If your slug != repo name, set it (or use a secret/var)
-          slug: ac-advanced-flamingo-settings
+          generate-zip: true
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
