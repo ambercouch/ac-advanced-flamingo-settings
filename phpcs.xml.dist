@@ -4,8 +4,12 @@
   <rule ref="WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase">
     <severity>0</severity>
   </rule>
+  <rule ref="WordPress-Extra">
+  		<exclude name="WordPress.PHP.YodaConditions"/>
+  	</rule>
   <file>./</file>
   <exclude-pattern>vendor/*</exclude-pattern>
   <exclude-pattern>build/*</exclude-pattern>
   <exclude-pattern>.github/*</exclude-pattern>
+  <exclude-pattern>*/assets/js/*</exclude-pattern>
 </ruleset>

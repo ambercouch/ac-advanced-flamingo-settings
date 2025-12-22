@@ -7,7 +7,9 @@
     },
     "autoload": {
         "psr-4": {
-            "ACAFS\\": "lib/"
+            "ACAFS\\": "lib/",
+            "ACAFS\\Admin\\": "lib/Admin/",
+            "ACAFS\\Admin\\Flamingo\\": "lib/Admin/Flamingo/"
         }
     },
     "require-dev": {
@@ -23,5 +25,10 @@
     },
     "extra": {
         "phpcodesniffer-standard": "WordPress-Extra"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
     }
 }
