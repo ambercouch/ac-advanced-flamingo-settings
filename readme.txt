@@ -75,6 +75,9 @@ Go to **Settings → AC Flamingo** and enter your preferred name for the menu.
 
 == Changelog ==
 
+= 1.4.1 =
+- **fixed missing vendor bug **
+
 = 1.4.0 =
 - **Persistent file uploads for Contact Form 7**
   - Uploaded files are now stored permanently and linked correctly in Flamingo messages.
@@ -116,6 +119,9 @@ Initial release with the following features:
 - Enhanced settings panel.
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+Fix vendor issue
 
 = 1.4.0 =
 Adds persistent file uploads for Contact Form 7 and clickable file links in Flamingo messages.
