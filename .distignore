@@ -1,0 +1,7 @@
+.git
+.github
+tests
+build
+phpstan.neon
+phpcs.xml.dist
+composer.lock
