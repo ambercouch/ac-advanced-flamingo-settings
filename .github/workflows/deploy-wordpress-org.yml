@@ -26,11 +26,11 @@ jobs:
         run: composer install --no-dev --prefer-dist --optimize-autoloader
 
       # Optional: run your checks again
-      - name: Lint
-        run: composer lint
+      # - name: Lint
+      # run: composer lint
 
-      - name: PHPStan
-        run: composer stan
+      # - name: PHPStan
+      #  run: composer stan
 
       # Deploy
       - name: Deploy to WordPress.org SVN
