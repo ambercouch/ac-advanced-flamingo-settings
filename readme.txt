@@ -3,9 +3,9 @@
 Contributors: amberCouch
 Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 5.4
-Tested up to: 6.7
+Tested up to: 6.9
 Requires PHP: 7.2
-Stable tag: 1.3.0
+Stable tag: 1.4.2
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -75,6 +75,15 @@ Go to **Settings → AC Flamingo** and enter your preferred name for the menu.
 
 == Changelog ==
 
+= 1.4.2 =
+* Fix missing vendor folder in version 1.4.0.
+
+= 1.4.0 =
+* Persist CF7 uploads to permanent URLs and store them in Flamingo.
+* Make stored upload URLs clickable on the Flamingo single message screen.
+* Performance and background import improvements.
+* Internal code quality / autoloading setup.
+
 = 1.3.0 =
 - **Performance Improvements:**
   - Import now processes messages in **batches of up to 50** for significant speed gains.
@@ -108,6 +117,9 @@ Initial release with the following features:
 - Enhanced settings panel.
 
 == Upgrade Notice ==
+
+= 1.4.2 =
+Fixes for broken 1.4.0 version.
 
 = 1.3.0 =
 Faster imports with batch processing and better duplicate detection. Import progress indicators and notifications are now more reliable for large datasets.
