@@ -38,18 +38,21 @@ define( 'ACAFS_PLUGIN_ASSETS_URL', ACAFS_PLUGIN_URL . 'assets/' );
 $autoload = ACAFS_PLUGIN_DIR . '/vendor/autoload.php';
 
 if ( file_exists( $autoload ) ) {
-    require_once $autoload;
+	require_once $autoload;
 } else {
-    add_action( 'admin_notices', function () {
-        echo '<div class="notice notice-error"><p><strong>AC Advanced Flamingo Settings:</strong> Missing vendor files. Please reinstall the plugin.</p></div>';
-    } );
-    return;
+	add_action(
+		'admin_notices',
+		function () {
+			echo '<div class="notice notice-error"><p><strong>AC Advanced Flamingo Settings:</strong> Missing vendor files. Please reinstall the plugin.</p></div>';
+		}
+	);
+	return;
 }
 //require ACAFS_PLUGIN_DIR . '/lib/Admin/Flamingo/class-acafs-flamingo-file-linker.php';
 require ACAFS_PLUGIN_INC_DIR . '/class-acafs-plugin.php';
 
 if ( class_exists( \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker::class ) ) {
-    ( new \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker() )->register();
+	( new \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker() )->register();
 }
 
 
