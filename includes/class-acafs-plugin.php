@@ -66,6 +66,9 @@ class ACAFS_Plugin {
 		//new ACAFS_Single_Message();
 		new ACAFS_Export( $this->import_process ); // Pass background import if needed
 		new ACAFS_Import( $this->import_process );
+		if ( get_option( 'acafs_enable_persistent_uploads', false ) ) {
+			new ACAFS_CF7_Persist_Uploads();
+		}
 
 		// Optional integrations (can be conditional later)
 		if ( class_exists( 'ACAFS_Compat_Divi' ) ) {
