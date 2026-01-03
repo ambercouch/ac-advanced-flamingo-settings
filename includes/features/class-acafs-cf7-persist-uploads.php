@@ -176,6 +176,3 @@ class ACAFS_CF7_Persist_Uploads {
 		return $this->replace_hash_with_url_for_flamingo( $args );
 	}
 }
-
-// Boot persistence.
-new ACAFS_CF7_Persist_Uploads();

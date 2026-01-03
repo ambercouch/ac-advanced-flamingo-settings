@@ -63,6 +63,14 @@ class ACAFS_Settings {
 			)
 		);
 
+		register_setting(
+			'acafs_settings_group',
+			'acafs_enable_persistent_uploads',
+			array(
+				'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
+			)
+		);
+
 		add_settings_section(
 			'acafs_menu_settings_section',
 			__( 'Flamingo Menu Customization', 'ac-advanced-flamingo-settings' ),
@@ -94,6 +102,23 @@ class ACAFS_Settings {
 			array( $this, 'acafs_default_flamingo_page_callback' ),
 			'acafs-settings',
 			'acafs_menu_settings_section'
+		);
+
+		add_settings_section(
+			'acafs_upload_settings_section',
+			__( 'File Uploads', 'ac-advanced-flamingo-settings' ),
+			function () {
+				echo '<p>' . esc_html__( 'Control how Contact Form 7 file uploads are stored for Flamingo.', 'ac-advanced-flamingo-settings' ) . '</p>';
+			},
+			'acafs-settings'
+		);
+
+		add_settings_field(
+			'acafs_enable_persistent_uploads',
+			__( 'Persistent Uploads', 'ac-advanced-flamingo-settings' ),
+			array( $this, 'acafs_enable_persistent_uploads_callback' ),
+			'acafs-settings',
+			'acafs_upload_settings_section'
 		);
 	}
 
@@ -182,6 +207,17 @@ class ACAFS_Settings {
 			</option>
 		</select>
 		<?php
+	}
+
+	/**
+	 * Render field: enable persistent uploads checkbox
+	 */
+	public function acafs_enable_persistent_uploads_callback() {
+		$enabled = (bool) get_option( 'acafs_enable_persistent_uploads', false );
+		echo '<label>';
+		echo '<input type="checkbox" name="acafs_enable_persistent_uploads" value="1" ' . checked( 1, $enabled, false ) . '> ';
+		echo esc_html__( 'Store Contact Form 7 uploads in a permanent folder and save URLs in Flamingo', 'ac-advanced-flamingo-settings' );
+		echo '</label>';
 	}
 
 	/**
