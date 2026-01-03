@@ -38,32 +38,35 @@ class ACAFS_Background_Import extends WP_Background_Process {
 		}
 
 		// Query for existing posts by title/content (bulk match).
-		$titles   = array_column( $messages_batch, 'post_title' );
-		$contents = array_column( $messages_batch, 'post_content' );
-
-		// Query for existing posts by title/content (bulk match).
-		$titles   = array_column( $messages_batch, 'post_title' );
-		$contents = array_column( $messages_batch, 'post_content' );
+		$titles = array_column( $messages_batch, 'post_title' );
 
 		if ( empty( $titles ) ) {
 			$existing = array();
 		} else {
-			// Build comma-separated list of %s placeholders, one per title.
-			$placeholders = implode( ', ', array_fill( 0, count( $titles ), '%s' ) );
+			$titles = array_column( $messages_batch, 'post_title' );
 
-			$existing = $wpdb->get_results(
-				$wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"
-				SELECT ID, post_title, post_content
-				FROM {$wpdb->posts}
-				WHERE post_type = 'flamingo_inbound'
-				  AND post_status = 'publish'
-				  AND post_title IN ($placeholders)
-			",
+			if ( empty( $titles ) ) {
+				$existing = array();
+			} else {
+				$placeholders = implode( ', ', array_fill( 0, count( $titles ), '%s' ) );
+
+				$sql = "
+		         SELECT ID, post_title, post_content
+		         FROM {$wpdb->posts}
+		         WHERE post_type = %s
+		          AND post_status = %s
+		          AND post_title IN ($placeholders)
+	           ";
+
+				$args = array_merge(
+					array( 'flamingo_inbound', 'publish' ),
 					$titles
-				)
-			);
+				);
+
+				$existing = $wpdb->get_results(
+					$wpdb->prepare( $sql, ...$args ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				);
+			}
 		}
 
 		$existing_hashes = array();

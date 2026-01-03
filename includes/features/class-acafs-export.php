@@ -13,55 +13,75 @@ class ACAFS_Export {
 	}
 
 	/**
-	 * Export Flamingo messages to a JSON file, optionally filtered by date range
+	 * Export Flamingo messages to a JSON file, optionally filtered by date range.
 	 */
 	public function acafs_export_flamingo_messages() {
 		global $wpdb;
 
-		$start_date = isset( $_GET['start_date'] ) ? sanitize_text_field( $_GET['start_date'] ) : '';
-		$end_date   = isset( $_GET['end_date'] ) ? sanitize_text_field( $_GET['end_date'] ) : '';
-		$export_all = isset( $_GET['export_all'] ) ? intval( $_GET['export_all'] ) : 0;
-
-		$date_filter = '';
-		if ( ! $export_all && ! empty( $start_date ) && ! empty( $end_date ) ) {
-			$date_filter = $wpdb->prepare( 'AND post_date BETWEEN %s AND %s', $start_date . ' 00:00:00', $end_date . ' 23:59:59' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to do that.', 'ac-advanced-flamingo-settings' ) );
 		}
 
-		$total = (int) $wpdb->get_var(
-			"
-            SELECT COUNT(*) FROM {$wpdb->posts}
-            WHERE post_type = 'flamingo_inbound'
-            AND post_status = 'publish'
-            $date_filter
-        "
-		);
+		check_admin_referer( 'acafs_export_flamingo_messages' );
 
-		if ( $total === 0 ) {
-			set_transient( 'acafs_export_success', 0, 30 );
-			wp_redirect( admin_url( 'admin.php?page=acafs-message-sync&export_success=1' ) );
-			exit;
+		$start_date = isset( $_GET['start_date'] ) ? sanitize_text_field( wp_unslash( $_GET['start_date'] ) ) : '';
+		$end_date   = isset( $_GET['end_date'] ) ? sanitize_text_field( wp_unslash( $_GET['end_date'] ) ) : '';
+		$export_all = isset( $_GET['export_all'] ) ? (int) $_GET['export_all'] : 0;
+
+		$is_filtered = ( ! $export_all && ! empty( $start_date ) && ! empty( $end_date ) );
+
+		// COUNT query (no SQL fragments).
+		if ( $is_filtered ) {
+			$total_query  = "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s AND post_date BETWEEN %s AND %s";
+			$total_params = array(
+				'flamingo_inbound',
+				'publish',
+				$start_date . ' 00:00:00',
+				$end_date . ' 23:59:59',
+			);
+		} else {
+			$total_query  = "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s";
+			$total_params = array( 'flamingo_inbound', 'publish' );
 		}
+
+		$total_prepared = call_user_func_array( array( $wpdb, 'prepare' ), array_merge( array( $total_query ), $total_params ) );
+		$total          = (int) $wpdb->get_var( $total_prepared ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		$batch    = 500;
 		$offset   = 0;
 		$messages = array();
 
 		while ( $offset < $total ) {
-			$results = $wpdb->get_results(
-				"
-                SELECT * FROM {$wpdb->posts}
-                WHERE post_type = 'flamingo_inbound'
-                AND post_status = 'publish'
-                $date_filter
-                LIMIT $batch OFFSET $offset
-            ",
-				ARRAY_A
-			);
+
+			// SELECT query (no SQL fragments).
+			if ( $is_filtered ) {
+				$select_query  = "SELECT * FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s AND post_date BETWEEN %s AND %s LIMIT %d OFFSET %d";
+				$select_params = array(
+					'flamingo_inbound',
+					'publish',
+					$start_date . ' 00:00:00',
+					$end_date . ' 23:59:59',
+					$batch,
+					$offset,
+				);
+			} else {
+				$select_query  = "SELECT * FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s LIMIT %d OFFSET %d";
+				$select_params = array(
+					'flamingo_inbound',
+					'publish',
+					$batch,
+					$offset,
+				);
+			}
+
+			$select_prepared = call_user_func_array( array( $wpdb, 'prepare' ), array_merge( array( $select_query ), $select_params ) );
+
+			$results = $wpdb->get_results( $select_prepared, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 			foreach ( $results as &$msg ) {
-				$msg['meta']       = get_post_meta( $msg['ID'] );
-				$terms             = wp_get_post_terms( $msg['ID'], 'flamingo_inbound_channel', array( 'fields' => 'ids' ) );
-				$msg['channel_id'] = ! empty( $terms ) ? $terms[0] : 0;
+				$msg['meta']       = get_post_meta( (int) $msg['ID'] );
+				$terms             = wp_get_post_terms( (int) $msg['ID'], 'flamingo_inbound_channel', array( 'fields' => 'ids' ) );
+				$msg['channel_id'] = ! empty( $terms ) ? (int) $terms[0] : 0;
 			}
 
 			$messages = array_merge( $messages, $results );
@@ -69,21 +89,33 @@ class ACAFS_Export {
 		}
 
 		$filename = 'flamingo-messages';
-		if ( ! $export_all && $start_date && $end_date ) {
+		if ( $is_filtered ) {
 			$filename .= "-{$start_date}_to_{$end_date}";
 		}
 		$filename .= '-' . time() . '.json';
 
 		$upload_dir = wp_upload_dir();
 		$file_path  = trailingslashit( $upload_dir['basedir'] ) . $filename;
-		file_put_contents( $file_path, json_encode( $messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) );
 
-		set_transient( 'acafs_export_file', $upload_dir['baseurl'] . '/' . $filename, 30 );
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		WP_Filesystem();
+		global $wp_filesystem;
+
+		$json = wp_json_encode( $messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+
+		if ( ! $wp_filesystem || ! $wp_filesystem->put_contents( $file_path, $json, FS_CHMOD_FILE ) ) {
+			wp_die( esc_html__( 'Export failed: could not write file.', 'ac-advanced-flamingo-settings' ) );
+		}
+
+		set_transient( 'acafs_export_file', trailingslashit( $upload_dir['baseurl'] ) . $filename, 30 );
 		set_transient( 'acafs_export_success', $total, 5 * MINUTE_IN_SECONDS );
 
-		wp_redirect( admin_url( 'admin.php?page=acafs-message-sync&export_success=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=acafs-message-sync&export_success=1' ) );
 		exit;
 	}
+
+
+
 
 	/**
 	 * Show a notice after export
@@ -121,27 +153,33 @@ class ACAFS_Export {
 	public function acafs_get_message_count() {
 		global $wpdb;
 
-		$start_date = isset( $_GET['start_date'] ) ? sanitize_text_field( $_GET['start_date'] ) : '';
-		$end_date   = isset( $_GET['end_date'] ) ? sanitize_text_field( $_GET['end_date'] ) : '';
-		$export_all = isset( $_GET['export_all'] ) ? intval( $_GET['export_all'] ) : 0;
+		$start_date = isset( $_GET['start_date'] ) ? sanitize_text_field( wp_unslash( $_GET['start_date'] ) ) : '';
+		$end_date   = isset( $_GET['end_date'] ) ? sanitize_text_field( wp_unslash( $_GET['end_date'] ) ) : '';
+		$export_all = isset( $_GET['export_all'] ) ? (int) $_GET['export_all'] : 0;
 
-		$date_filter = '';
-		if ( ! $export_all && ! empty( $start_date ) && ! empty( $end_date ) ) {
-			$date_filter = $wpdb->prepare( 'AND post_date BETWEEN %s AND %s', $start_date . ' 00:00:00', $end_date . ' 23:59:59' );
+		$is_filtered = ( ! $export_all && ! empty( $start_date ) && ! empty( $end_date ) );
+
+		if ( $is_filtered ) {
+			$query  = "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s AND post_date BETWEEN %s AND %s";
+			$params = array(
+				'flamingo_inbound',
+				'publish',
+				$start_date . ' 00:00:00',
+				$end_date . ' 23:59:59',
+			);
+		} else {
+			$query  = "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s";
+			$params = array( 'flamingo_inbound', 'publish' );
 		}
 
-		$count = $wpdb->get_var(
-			"
-            SELECT COUNT(*) FROM {$wpdb->posts}
-            WHERE post_type = 'flamingo_inbound'
-            AND post_status = 'publish'
-            $date_filter
-        "
-		);
+		$prepared = call_user_func_array( array( $wpdb, 'prepare' ), array_merge( array( $query ), $params ) );
+		$count    = (int) $wpdb->get_var( $prepared ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		echo intval( $count );
+		echo (int) $count;
 		exit;
 	}
+
+
 
 	/**
 	 * Render the export section of the import/export page
@@ -156,7 +194,9 @@ class ACAFS_Export {
 				<p><?php esc_html_e( 'Download Flamingo messages as a JSON file. You can select a date range or download all messages.', 'ac-advanced-flamingo-settings' ); ?></p>
 
 				<form id="acafs-export-form">
+
 					<input type="hidden" name="action" value="acafs_export_flamingo_messages">
+			<?php wp_nonce_field( 'acafs_export_flamingo_messages' ); ?>
 
 					<label>
 						<input type="checkbox" id="export_all" name="export_all" value="1">
@@ -206,6 +246,9 @@ class ACAFS_Export {
 
 				form.addEventListener("submit", function (e) {
 					e.preventDefault();
+
+					const nonce = (form.querySelector('input[name="_wpnonce"]') || {}).value || '';
+
 					feedback.innerHTML = "<p><strong><?php esc_html_e( 'Exporting messages... Please wait.', 'ac-advanced-flamingo-settings' ); ?></strong></p>";
 					form.action = "<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" +
 						"?action=acafs_export_flamingo_messages&start_date=" + encodeURIComponent(startDate.value) +
