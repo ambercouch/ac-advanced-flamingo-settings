@@ -4,7 +4,7 @@
  * Plugin Name:       AC Advanced Flamingo Settings
  * Requires Plugins:  flamingo
  * Description:       Enhances and extends the functionality of the CF7 Flamingo plugin by adding customization options and import / export functionality, for better contact form data management.
- * Version:           1.4.2
+ * Version:           1.4.3
  * Author:            AmberCouch
  * Author URI:        https://ambercouch.co.uk/
  * License:           GPLv2 or later
