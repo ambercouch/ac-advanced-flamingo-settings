@@ -37,6 +37,7 @@ class ACAFS_Plugin {
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-export.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-import.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-cf7-persist-uploads.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-uploaded-files.php';
 
 		// Background imports
 		require_once ACAFS_PLUGIN_INC_DIR . 'background/class-acafs-background-import.php';
@@ -66,6 +67,7 @@ class ACAFS_Plugin {
 		//new ACAFS_Single_Message();
 		new ACAFS_Export( $this->import_process ); // Pass background import if needed
 		new ACAFS_Import( $this->import_process );
+		new ACAFS_Uploaded_Files();
 		if ( get_option( 'acafs_enable_persistent_uploads', false ) ) {
 			new ACAFS_CF7_Persist_Uploads();
 		}
