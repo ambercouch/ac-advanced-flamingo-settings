@@ -193,7 +193,7 @@ class ACAFS_Uploaded_Files {
 		}
 
 		$base_dir = trailingslashit( $base_dir );
-		$base    = realpath( $base_dir );
+		$base     = realpath( $base_dir );
 		if ( ! $base ) {
 			return false;
 		}
@@ -252,7 +252,7 @@ class ACAFS_Uploaded_Files {
 			return;
 		}
 
-		$status = sanitize_text_field( wp_unslash( $_GET['acafs_status'] ) );
+		$status  = sanitize_text_field( wp_unslash( $_GET['acafs_status'] ) );
 		$message = '';
 		$class   = 'notice notice-success';
 
