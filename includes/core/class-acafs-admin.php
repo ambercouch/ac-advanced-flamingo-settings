@@ -22,6 +22,16 @@ class ACAFS_Admin {
 			array( $this, 'acafs_render_import_export_page' )
 		);
 
+		// Uploaded files page
+		add_submenu_page(
+			'flamingo',
+			__( 'Uploaded Files', 'ac-advanced-flamingo-settings' ),
+			__( 'Uploaded Files', 'ac-advanced-flamingo-settings' ),
+			'manage_options',
+			'acafs-uploaded-files',
+			array( $this, 'acafs_render_uploaded_files_page' )
+		);
+
 		// Settings page
 		add_submenu_page(
 			'flamingo',
@@ -92,5 +102,16 @@ class ACAFS_Admin {
 		</div>
 		<?php
 	}
-}
 
+	/**
+	 * Placeholder for rendering the uploaded files page
+	 */
+	public function acafs_render_uploaded_files_page() {
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Uploaded Files', 'ac-advanced-flamingo-settings' ); ?></h1>
+			<?php do_action( 'acafs_render_uploaded_files_page' ); ?>
+		</div>
+		<?php
+	}
+}
