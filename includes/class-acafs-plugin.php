@@ -42,8 +42,8 @@ class ACAFS_Plugin {
 		// Background imports
 		require_once ACAFS_PLUGIN_INC_DIR . 'background/class-acafs-background-import.php';
 
-		// Future: Divi compatibility
-		$divi_file = ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-compat-divi.php';
+		// Divi integration
+		$divi_file = ACAFS_PLUGIN_INC_DIR . 'integrations/divi/class-acafs-divi-integration.php';
 		if ( file_exists( $divi_file ) ) {
 			require_once $divi_file;
 		}
@@ -73,8 +73,12 @@ class ACAFS_Plugin {
 		}
 
 		// Optional integrations (can be conditional later)
-		if ( class_exists( 'ACAFS_Compat_Divi' ) ) {
-			new ACAFS_Compat_Divi();
+		if ( get_option( 'acafs_enable_divi_contact_capture', false ) ) {
+			if ( class_exists( 'ACAFS_Divi_Integration' ) && ACAFS_Divi_Integration::is_divi_active() ) {
+				new ACAFS_Divi_Integration();
+			} else {
+				add_action( 'admin_notices', array( $this, 'acafs_show_divi_missing_notice' ) );
+			}
 		}
 	}
 
@@ -177,5 +181,18 @@ class ACAFS_Plugin {
 				break;
 			}
 		}
+	}
+
+	/**
+	 * Show notice when Divi integration is enabled but Divi is inactive.
+	 */
+	public function acafs_show_divi_missing_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		echo '<div class="notice notice-warning"><p>';
+		echo esc_html__( 'Divi Contact Form capture is enabled, but the Divi theme is not active.', 'ac-advanced-flamingo-settings' );
+		echo '</p></div>';
 	}
 }
