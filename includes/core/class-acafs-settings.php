@@ -71,6 +71,14 @@ class ACAFS_Settings {
 			)
 		);
 
+		register_setting(
+			'acafs_settings_group',
+			'acafs_enable_divi_contact_capture',
+			array(
+				'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
+			)
+		);
+
 		add_settings_section(
 			'acafs_menu_settings_section',
 			__( 'Flamingo Menu Customization', 'ac-advanced-flamingo-settings' ),
@@ -119,6 +127,23 @@ class ACAFS_Settings {
 			array( $this, 'acafs_enable_persistent_uploads_callback' ),
 			'acafs-settings',
 			'acafs_upload_settings_section'
+		);
+
+		add_settings_section(
+			'acafs_integrations_section',
+			__( 'Integrations', 'ac-advanced-flamingo-settings' ),
+			function () {
+				echo '<p>' . esc_html__( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ) . '</p>';
+			},
+			'acafs-settings'
+		);
+
+		add_settings_field(
+			'acafs_enable_divi_contact_capture',
+			__( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
+			array( $this, 'acafs_enable_divi_contact_capture_callback' ),
+			'acafs-settings',
+			'acafs_integrations_section'
 		);
 	}
 
@@ -217,6 +242,22 @@ class ACAFS_Settings {
 		echo '<label>';
 		echo '<input type="checkbox" name="acafs_enable_persistent_uploads" value="1" ' . checked( 1, $enabled, false ) . '> ';
 		echo esc_html__( 'Store Contact Form 7 uploads in a permanent folder and save URLs in Flamingo', 'ac-advanced-flamingo-settings' );
+		echo '</label>';
+	}
+
+	/**
+	 * Render field: enable Divi Contact Form capture.
+	 */
+	public function acafs_enable_divi_contact_capture_callback() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			echo esc_html__( 'You do not have permission to manage this setting.', 'ac-advanced-flamingo-settings' );
+			return;
+		}
+
+		$enabled = (bool) get_option( 'acafs_enable_divi_contact_capture', false );
+		echo '<label>';
+		echo '<input type="checkbox" name="acafs_enable_divi_contact_capture" value="1" ' . checked( 1, $enabled, false ) . '> ';
+		echo esc_html__( 'Enable Divi Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' );
 		echo '</label>';
 	}
 
