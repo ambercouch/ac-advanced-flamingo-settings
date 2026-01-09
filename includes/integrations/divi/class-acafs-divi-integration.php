@@ -67,7 +67,7 @@ class ACAFS_Divi_Integration {
 			return;
 		}
 
-		$this->create_inbound( $fields, $contact_form_info );
+		$this->create_inbound( $this->map_core_fields( $fields ), $contact_form_info );
 	}
 
 	/**
@@ -98,7 +98,7 @@ class ACAFS_Divi_Integration {
 			return;
 		}
 
-		$this->create_inbound( $fields, array() );
+		$this->create_inbound( $this->map_core_fields( $fields ), array() );
 	}
 
 	/**
@@ -207,6 +207,32 @@ class ACAFS_Divi_Integration {
 	}
 
 	/**
+	 * Map Divi core fields to CF7-style keys while preserving any extras.
+	 *
+	 * @param array $fields Sanitized field values.
+	 * @return array
+	 */
+	private function map_core_fields( $fields ) {
+		$mapped = $fields;
+
+		$core_map = array(
+			'name'    => 'your-name',
+			'email'   => 'your-email',
+			'subject' => 'your-subject',
+			'message' => 'your-message',
+		);
+
+		foreach ( $core_map as $source_key => $target_key ) {
+			if ( isset( $fields[ $source_key ] ) ) {
+				$mapped[ $target_key ] = $fields[ $source_key ];
+				unset( $mapped[ $source_key ] );
+			}
+		}
+
+		return $mapped;
+	}
+
+	/**
 	 * Create an inbound Flamingo message from sanitized fields.
 	 *
 	 * @param array $fields Sanitized field values.
@@ -238,13 +264,14 @@ class ACAFS_Divi_Integration {
 	 * @return array
 	 */
 	private function build_inbound_args( $fields, $contact_form_info ) {
-		$name    = isset( $fields['name'] ) ? $fields['name'] : '';
-		$email   = isset( $fields['email'] ) ? $fields['email'] : '';
-		$subject = isset( $fields['subject'] ) ? $fields['subject'] : '';
+		$name    = isset( $fields['your-name'] ) ? $fields['your-name'] : '';
+		$email   = isset( $fields['your-email'] ) ? $fields['your-email'] : '';
+		$subject = isset( $fields['your-subject'] ) ? $fields['your-subject'] : '';
+		$message = isset( $fields['your-message'] ) ? $fields['your-message'] : '';
 
 		if ( '' === $subject ) {
 			$subject = esc_html__( 'Divi Contact Form submission', 'ac-advanced-flamingo-settings' );
-			$fields['subject'] = $subject;
+			$fields['your-subject'] = $subject;
 		}
 
 		$from = '';
@@ -262,6 +289,7 @@ class ACAFS_Divi_Integration {
 			'from'       => $from,
 			'from_name'  => $name,
 			'from_email' => $email,
+			'message'    => $message,
 			'fields'     => $fields,
 			'meta'       => $meta,
 		);
@@ -276,12 +304,12 @@ class ACAFS_Divi_Integration {
 	private function build_meta( $contact_form_info ) {
 		$meta = array();
 
-		if ( function_exists( 'flamingo_request_ip' ) ) {
-			$meta['remote_ip'] = sanitize_text_field( flamingo_request_ip() );
+		if ( function_exists( 'flamingo_get_remote_ip' ) ) {
+			$meta['remote_ip'] = sanitize_text_field( flamingo_get_remote_ip() );
 		}
 
-		if ( function_exists( 'flamingo_request_user_agent' ) ) {
-			$meta['user_agent'] = sanitize_text_field( flamingo_request_user_agent() );
+		if ( function_exists( 'flamingo_get_user_agent' ) ) {
+			$meta['user_agent'] = sanitize_text_field( flamingo_get_user_agent() );
 		}
 
 		$request_url = $this->resolve_request_url();
