@@ -120,6 +120,32 @@ class ACAFS_Settings {
 			'acafs-settings',
 			'acafs_upload_settings_section'
 		);
+
+		// Integrations
+		register_setting(
+			'acafs_settings_group',
+			'acafs_enable_divi_capture',
+			array(
+				'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
+			)
+		);
+
+		add_settings_section(
+			'acafs_integrations_section',
+			__( 'Integrations', 'ac-advanced-flamingo-settings' ),
+			function () {
+				echo '<p>' . esc_html__( 'Enable optional integrations that write submissions into Flamingo.', 'ac-advanced-flamingo-settings' ) . '</p>';
+			},
+			'acafs-settings'
+		);
+
+		add_settings_field(
+			'acafs_enable_divi_capture',
+			__( 'Divi Contact Form Capture', 'ac-advanced-flamingo-settings' ),
+			array( $this, 'acafs_enable_divi_capture_callback' ),
+			'acafs-settings',
+			'acafs_integrations_section'
+		);
 	}
 
 	/**
@@ -217,6 +243,21 @@ class ACAFS_Settings {
 		echo '<label>';
 		echo '<input type="checkbox" name="acafs_enable_persistent_uploads" value="1" ' . checked( 1, $enabled, false ) . '> ';
 		echo esc_html__( 'Store Contact Form 7 uploads in a permanent folder and save URLs in Flamingo', 'ac-advanced-flamingo-settings' );
+		echo '</label>';
+	}
+
+	/**
+	 * Render field: enable Divi integration checkbox
+	 */
+	public function acafs_enable_divi_capture_callback() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$enabled = (bool) get_option( 'acafs_enable_divi_capture', false );
+		echo '<label>';
+		echo '<input type="checkbox" name="acafs_enable_divi_capture" value="1" ' . checked( 1, $enabled, false ) . '> ';
+		echo esc_html__( 'Enable Divi Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' );
 		echo '</label>';
 	}
 
