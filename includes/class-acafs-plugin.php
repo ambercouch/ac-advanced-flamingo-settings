@@ -42,11 +42,8 @@ class ACAFS_Plugin {
 		// Background imports
 		require_once ACAFS_PLUGIN_INC_DIR . 'background/class-acafs-background-import.php';
 
-		// Future: Divi compatibility
-		$divi_file = ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-compat-divi.php';
-		if ( file_exists( $divi_file ) ) {
-			require_once $divi_file;
-		}
+		// Integrations
+		require_once ACAFS_PLUGIN_INC_DIR . 'integrations/divi/class-acafs-divi-integration.php';
 	}
 
 	/**
@@ -72,9 +69,8 @@ class ACAFS_Plugin {
 			new ACAFS_CF7_Persist_Uploads();
 		}
 
-		// Optional integrations (can be conditional later)
-		if ( class_exists( 'ACAFS_Compat_Divi' ) ) {
-			new ACAFS_Compat_Divi();
+		if ( get_option( 'acafs_enable_divi_capture', false ) && ACAFS_Divi_Integration::is_divi_active() ) {
+			new ACAFS_Divi_Integration();
 		}
 	}
 
