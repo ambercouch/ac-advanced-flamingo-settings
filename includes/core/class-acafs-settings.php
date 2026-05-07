@@ -72,13 +72,15 @@ class ACAFS_Settings {
 			)
 		);
 
-      register_setting(
-          'acafs_settings_group',
-          'acafs_enable_divi_contact_capture',
-          array(
-              'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
-          )
-      );
+		foreach ( $this->acafs_get_integration_configs() as $integration ) {
+			register_setting(
+				'acafs_settings_group',
+				$integration['option_name'],
+				array(
+					'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
+				)
+			);
+		}
 
 		add_settings_section(
 			'acafs_menu_settings_section',
@@ -139,13 +141,18 @@ class ACAFS_Settings {
 			'acafs-integrations'
 		);
 
-		add_settings_field(
-			'acafs_enable_divi_contact_capture',
-			__( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
-			array( $this, 'acafs_enable_divi_contact_capture_callback' ),
-			'acafs-integrations',
-			'acafs_integrations_section'
-		);
+		foreach ( $this->acafs_get_integration_configs() as $integration ) {
+			add_settings_field(
+				$integration['option_name'],
+				$integration['label'],
+				array( $this, 'acafs_render_integration_field' ),
+				'acafs-integrations',
+				'acafs_integrations_section',
+				array(
+					'config' => $integration,
+				)
+			);
+		}
 	}
 
 	/**
@@ -326,20 +333,182 @@ class ACAFS_Settings {
 		return $meta_keys;
 	}
 
-    /**
-     * Render field: enable Divi Contact Form capture.
-     */
-    public function acafs_enable_divi_contact_capture_callback() {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            echo esc_html__( 'You do not have permission to manage this setting.', 'ac-advanced-flamingo-settings' );
-            return;
-        }
+	/**
+	 * Get integrations configuration.
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	public function acafs_get_integration_configs() {
+		return array(
+			array(
+				'key'                   => 'divi',
+				'label'                 => __( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
+				'option_name'           => 'acafs_enable_divi_contact_capture',
+				'plugin_file'           => 'acafs-divi-contact-form-for-flamingo/acafs-divi-contact-form-for-flamingo.php',
+				'product_url'           => 'https://ambercouch.co.uk/divi-contact-form-integration-for-flamingo-database/',
+				'headline'              => __( 'Save Divi Contact Form submissions to Flamingo', 'ac-advanced-flamingo-settings' ),
+				'description'           => __( 'Capture Divi Contact Form module submissions directly into Flamingo Inbound Messages, just like Contact Form 7.', 'ac-advanced-flamingo-settings' ),
+				'active_checkbox_label' => __( 'Enable Divi Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' ),
+				'inactive_message'      => __( 'Activate the plugin to enable Divi → Flamingo capture.', 'ac-advanced-flamingo-settings' ),
+				'price'                 => '£29.95',
+				'builder_name'          => __( 'Divi', 'ac-advanced-flamingo-settings' ),
+			),
+			array(
+				'key'                   => 'wpbakery',
+				'label'                 => __( 'WPBakery Contact Form', 'ac-advanced-flamingo-settings' ),
+				'option_name'           => 'acafs_enable_wpbakery_contact_capture',
+				'plugin_file'           => 'acafs-wpbakery-contact-form-for-flamingo/acafs-wpbakery-contact-form-for-flamingo.php',
+				'product_url'           => 'https://ambercouch.co.uk/wpbakery-contact-form-integration-for-flamingo-database/',
+				'headline'              => __( 'Save WPBakery contact form submissions to Flamingo', 'ac-advanced-flamingo-settings' ),
+				'description'           => __( 'Capture WPBakery contact form submissions directly into Flamingo Inbound Messages.', 'ac-advanced-flamingo-settings' ),
+				'active_checkbox_label' => __( 'Enable WPBakery Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' ),
+				'inactive_message'      => __( 'Activate the plugin to enable WPBakery → Flamingo capture.', 'ac-advanced-flamingo-settings' ),
+				'price'                 => '£29.95',
+				'builder_name'          => __( 'WPBakery', 'ac-advanced-flamingo-settings' ),
+			),
+			array(
+				'key'                   => 'enfold',
+				'label'                 => __( 'Enfold Contact Form', 'ac-advanced-flamingo-settings' ),
+				'option_name'           => 'acafs_enable_enfold_contact_capture',
+				'plugin_file'           => 'acafs-enfold-contact-form-for-flamingo/acafs-enfold-contact-form-for-flamingo.php',
+				'product_url'           => 'https://ambercouch.co.uk/enfold-contact-form-integration-for-flamingo-database/',
+				'headline'              => __( 'Save Enfold contact form submissions to Flamingo', 'ac-advanced-flamingo-settings' ),
+				'description'           => __( 'Capture Enfold contact form submissions directly into Flamingo Inbound Messages.', 'ac-advanced-flamingo-settings' ),
+				'active_checkbox_label' => __( 'Enable Enfold Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' ),
+				'inactive_message'      => __( 'Activate the plugin to enable Enfold → Flamingo capture.', 'ac-advanced-flamingo-settings' ),
+				'price'                 => '£29.95',
+				'builder_name'          => __( 'Enfold', 'ac-advanced-flamingo-settings' ),
+			),
+			array(
+				'key'                   => 'beaver_builder',
+				'label'                 => __( 'Beaver Builder Contact Form', 'ac-advanced-flamingo-settings' ),
+				'option_name'           => 'acafs_enable_beaver_builder_contact_capture',
+				'plugin_file'           => 'acafs-beaver-builder-contact-form-for-flamingo/acafs-beaver-builder-contact-form-for-flamingo.php',
+				'product_url'           => 'https://ambercouch.co.uk/beaver-builder-contact-form-integration-for-flamingo-database/',
+				'headline'              => __( 'Save Beaver Builder contact form submissions to Flamingo', 'ac-advanced-flamingo-settings' ),
+				'description'           => __( 'Capture Beaver Builder contact form submissions directly into Flamingo Inbound Messages.', 'ac-advanced-flamingo-settings' ),
+				'active_checkbox_label' => __( 'Enable Beaver Builder Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' ),
+				'inactive_message'      => __( 'Activate the plugin to enable Beaver Builder → Flamingo capture.', 'ac-advanced-flamingo-settings' ),
+				'price'                 => '£29.95',
+				'builder_name'          => __( 'Beaver Builder', 'ac-advanced-flamingo-settings' ),
+			),
+		);
+	}
 
-        $enabled = (bool) get_option( 'acafs_enable_divi_contact_capture', false );
-        echo '<label>';
-        echo '<input type="checkbox" name="acafs_enable_divi_contact_capture" value="1" ' . checked( 1, $enabled, false ) . '> ';
-        echo esc_html__( 'Enable Divi Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' );
-        echo '</label>';
-    }
+	public function acafs_is_integration_installed( $plugin_file ) {
+		return file_exists( WP_PLUGIN_DIR . '/' . ltrim( $plugin_file, '/' ) );
+	}
+
+	public function acafs_is_integration_active( $plugin_file ) {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return is_plugin_active( $plugin_file );
+	}
+
+	public function acafs_get_integration_state( $plugin_file ) {
+		if ( ! $this->acafs_is_integration_installed( $plugin_file ) ) {
+			return 'not_installed';
+		}
+
+		if ( $this->acafs_is_integration_active( $plugin_file ) ) {
+			return 'active';
+		}
+
+		return 'inactive';
+	}
+
+	public function acafs_render_integration_field( $args ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			echo esc_html__( 'You do not have permission to manage this setting.', 'ac-advanced-flamingo-settings' );
+			return;
+		}
+
+		$config = isset( $args['config'] ) ? $args['config'] : array();
+		if ( empty( $config['plugin_file'] ) ) {
+			return;
+		}
+
+		$state = $this->acafs_get_integration_state( $config['plugin_file'] );
+
+		if ( 'not_installed' === $state ) {
+			$this->acafs_render_integration_upgrade_card( $config );
+			return;
+		}
+
+		if ( 'inactive' === $state ) {
+			$this->acafs_render_integration_activation_card( $config );
+			return;
+		}
+
+		$this->acafs_render_integration_checkbox( $config );
+	}
+
+	public function acafs_render_integration_upgrade_card( $config ) {
+		?>
+		<div class="postbox" style="max-width:860px;">
+			<div class="inside">
+				<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;">
+					<span class="dashicons dashicons-superhero-alt" aria-hidden="true"></span>
+					<?php echo esc_html( $config['headline'] ); ?>
+				</h3>
+				<p class="description" style="margin-top:8px;">
+					<?php echo esc_html( $config['description'] ); ?>
+				</p>
+				<ul style="list-style:disc;padding-left:20px;margin:12px 0;">
+					<li><?php esc_html_e( 'Store submissions in the WordPress database', 'ac-advanced-flamingo-settings' ); ?></li>
+					<li><?php esc_html_e( 'Prevent lost email enquiries', 'ac-advanced-flamingo-settings' ); ?></li>
+					<li><?php esc_html_e( 'View submissions inside Flamingo', 'ac-advanced-flamingo-settings' ); ?></li>
+					<li><?php esc_html_e( 'Works with existing forms', 'ac-advanced-flamingo-settings' ); ?></li>
+					<li><?php esc_html_e( 'No need to rebuild forms in Contact Form 7', 'ac-advanced-flamingo-settings' ); ?></li>
+				</ul>
+				<p>
+					<span class="dashicons dashicons-tag" aria-hidden="true"></span>
+					<strong><?php echo esc_html( $config['price'] ); ?></strong>
+				</p>
+				<p style="margin:12px 0;">
+					<a href="<?php echo esc_url( $config['product_url'] ); ?>" class="button button-primary" target="_blank" rel="noopener noreferrer">
+						<?php esc_html_e( 'Get the Add-on', 'ac-advanced-flamingo-settings' ); ?>
+					</a>
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
+	public function acafs_render_integration_activation_card( $config ) {
+		$plugins_url = admin_url( 'plugins.php' );
+		?>
+		<div class="postbox" style="max-width:860px;">
+			<div class="inside">
+				<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;">
+					<span class="dashicons dashicons-admin-plugins" aria-hidden="true"></span>
+					<?php
+					/* translators: %s: builder name, such as Divi or WPBakery. */
+					echo esc_html( sprintf( __( 'AC %s Contact Form for Flamingo is installed', 'ac-advanced-flamingo-settings' ), $config['builder_name'] ) );
+					?>
+				</h3>
+				<p class="description">
+					<?php echo esc_html( $config['inactive_message'] ); ?>
+				</p>
+				<p style="margin-bottom:4px;">
+					<a href="<?php echo esc_url( $plugins_url ); ?>" class="button button-primary">
+						<?php esc_html_e( 'Activate Plugin', 'ac-advanced-flamingo-settings' ); ?>
+					</a>
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
+	public function acafs_render_integration_checkbox( $config ) {
+		$enabled = (bool) get_option( $config['option_name'], false );
+		echo '<label>';
+		echo '<input type="checkbox" name="' . esc_attr( $config['option_name'] ) . '" value="1" ' . checked( 1, $enabled, false ) . '> ';
+		echo esc_html( $config['active_checkbox_label'] );
+		echo '</label>';
+		echo '<p class="description">' . esc_html( $config['description'] ) . '</p>';
+	}
 
 }
