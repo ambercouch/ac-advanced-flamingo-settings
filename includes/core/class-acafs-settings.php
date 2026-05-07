@@ -467,7 +467,7 @@ class ACAFS_Settings {
 					<span class="dashicons dashicons-tag" aria-hidden="true"></span>
 					<strong><?php echo esc_html( $config['price'] ); ?></strong>
 				</p>
-				<p style="margin-bottom:4px;">
+				<p style="margin:12px 0;">
 					<a href="<?php echo esc_url( $config['product_url'] ); ?>" class="button button-primary" target="_blank" rel="noopener noreferrer">
 						<?php esc_html_e( 'Get the Add-on', 'ac-advanced-flamingo-settings' ); ?>
 					</a>
