@@ -378,7 +378,7 @@ class ACAFS_Settings {
 		$state = $this->acafs_get_divi_addon_state();
 
 		if ( 'not_installed' === $state ) {
-			$upgrade_url = 'https://onthecouch.co.uk/divi-contact-form-integration-for-flamingo-database/';
+			$upgrade_url = 'https://ambercouch.co.uk/divi-contact-form-integration-for-flamingo-database/';
 			?>
 			<div class="postbox" style="max-width:860px;">
 				<div class="inside">
@@ -396,7 +396,7 @@ class ACAFS_Settings {
 						<li><?php esc_html_e( 'Works with existing Divi forms', 'ac-advanced-flamingo-settings' ); ?></li>
 						<li><?php esc_html_e( 'No need to rebuild forms in Contact Form 7', 'ac-advanced-flamingo-settings' ); ?></li>
 					</ul>
-					<p>
+					<p style="margin: 12px 0">
 						<span class="dashicons dashicons-tag" aria-hidden="true"></span>
 						<strong><?php esc_html_e( '£29.95', 'ac-advanced-flamingo-settings' ); ?></strong>
 					</p>
@@ -423,7 +423,7 @@ class ACAFS_Settings {
 					<p class="description">
 						<?php esc_html_e( 'Activate the plugin to enable Divi → Flamingo capture.', 'ac-advanced-flamingo-settings' ); ?>
 					</p>
-					<p style="margin-bottom:4px;">
+					<p style="margin:12px 0;">
 						<a href="<?php echo esc_url( $plugins_url ); ?>" class="button button-primary">
 							<?php esc_html_e( 'Activate Plugin', 'ac-advanced-flamingo-settings' ); ?>
 						</a>
