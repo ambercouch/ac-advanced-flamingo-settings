@@ -6,6 +6,7 @@ class ACAFS_Settings {
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'acafs_register_plugin_settings' ) );
 		add_action( 'acafs_render_settings_page', array( $this, 'acafs_render_settings_page' ) );
+		add_action( 'acafs_render_integrations_page', array( $this, 'acafs_render_integrations_page' ) );
 	}
 
 	/**
@@ -135,14 +136,14 @@ class ACAFS_Settings {
 			function () {
 				echo '<p>' . esc_html__( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ) . '</p>';
 			},
-			'acafs-settings'
+			'acafs-integrations'
 		);
 
 		add_settings_field(
 			'acafs_enable_divi_contact_capture',
 			__( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
 			array( $this, 'acafs_enable_divi_contact_capture_callback' ),
-			'acafs-settings',
+			'acafs-integrations',
 			'acafs_integrations_section'
 		);
 	}
@@ -158,6 +159,24 @@ class ACAFS_Settings {
 				<?php
 				settings_fields( 'acafs_settings_group' );
 				do_settings_sections( 'acafs-settings' );
+				submit_button();
+				?>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the integrations settings page
+	 */
+	public function acafs_render_integrations_page() {
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
+			<form method="post" action="options.php">
+				<?php
+				settings_fields( 'acafs_settings_group' );
+				do_settings_sections( 'acafs-integrations' );
 				submit_button();
 				?>
 			</form>

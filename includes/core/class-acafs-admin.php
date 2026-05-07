@@ -41,6 +41,16 @@ class ACAFS_Admin {
 			'acafs-settings',
 			array( $this, 'acafs_render_settings_page' )
 		);
+
+		// Integrations page
+		add_submenu_page(
+			'flamingo',
+			__( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ),
+			__( 'Integrations', 'ac-advanced-flamingo-settings' ),
+			'manage_options',
+			'acafs-integrations',
+			array( $this, 'acafs_render_integrations_page' )
+		);
 	}
 
 	/**
@@ -85,6 +95,13 @@ class ACAFS_Admin {
 	 */
 	public function acafs_render_settings_page() {
 		do_action( 'acafs_render_settings_page' );
+	}
+
+	/**
+	 * Placeholder for rendering the integrations page.
+	 */
+	public function acafs_render_integrations_page() {
+		do_action( 'acafs_render_integrations_page' );
 	}
 
 	/**
