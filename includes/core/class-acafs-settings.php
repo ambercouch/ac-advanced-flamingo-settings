@@ -3,6 +3,48 @@ defined( 'ABSPATH' ) || exit;
 
 class ACAFS_Settings {
 
+	/**
+	 * Integration configurations.
+	 *
+	 * @return array<string, array<string, string>>
+	 */
+	private function acafs_get_integrations_config() {
+		return array(
+			'divi'            => array(
+				'title'        => __( 'Divi', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'  => 'acafs-divi-contact-form/acafs-divi-contact-form.php',
+				'option_name'  => 'acafs_enable_divi_contact_capture',
+				'description'  => __( 'Enable Divi Contact Form → Flamingo capture.', 'ac-advanced-flamingo-settings' ),
+				'purchase_url' => 'https://artistudio.xyz/product/divi-contact-form-to-flamingo-addon/',
+				'price'        => '$19',
+			),
+			'wpbakery'        => array(
+				'title'        => __( 'WPBakery', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'  => 'acafs-wpbakery-form/acafs-wpbakery-form.php',
+				'option_name'  => 'acafs_enable_wpbakery_capture',
+				'description'  => __( 'Enable WPBakery form capture into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'purchase_url' => 'https://artistudio.xyz/product/wpbakery-form-to-flamingo-addon/',
+				'price'        => '$19',
+			),
+			'enfold'          => array(
+				'title'        => __( 'Enfold', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'  => 'acafs-enfold-form/acafs-enfold-form.php',
+				'option_name'  => 'acafs_enable_enfold_capture',
+				'description'  => __( 'Enable Enfold form capture into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'purchase_url' => 'https://artistudio.xyz/product/enfold-form-to-flamingo-addon/',
+				'price'        => '$19',
+			),
+			'beaver_builder'  => array(
+				'title'        => __( 'Beaver Builder', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'  => 'acafs-beaver-builder-form/acafs-beaver-builder-form.php',
+				'option_name'  => 'acafs_enable_beaver_builder_capture',
+				'description'  => __( 'Enable Beaver Builder form capture into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'purchase_url' => 'https://artistudio.xyz/product/beaver-builder-form-to-flamingo-addon/',
+				'price'        => '$19',
+			),
+		);
+	}
+
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'acafs_register_plugin_settings' ) );
 		add_action( 'acafs_render_settings_page', array( $this, 'acafs_render_settings_page' ) );
@@ -170,16 +212,101 @@ class ACAFS_Settings {
 	 * Render the integrations settings page
 	 */
 	public function acafs_render_integrations_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$grouped_integrations = $this->acafs_get_integrations_grouped_by_state();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'acafs_settings_group' );
-				do_settings_sections( 'acafs-integrations' );
+
+				$this->acafs_render_integrations_section(
+					__( 'Activated Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These integrations are active. Use the controls below to enable or disable capture.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['active'],
+					'active'
+				);
+
+				$this->acafs_render_integrations_section(
+					__( 'Installed Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These integrations are installed but not active yet.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['installed'],
+					'installed'
+				);
+
+				$this->acafs_render_integrations_section(
+					__( 'Available Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These integrations are available as premium add-ons.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['available'],
+					'available'
+				);
+
 				submit_button();
 				?>
 			</form>
+		</div>
+		<?php
+	}
+
+	private function acafs_get_integrations_grouped_by_state() {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$grouped = array(
+			'active'    => array(),
+			'installed' => array(),
+			'available' => array(),
+		);
+
+		foreach ( $this->acafs_get_integrations_config() as $config ) {
+			$plugin_path = WP_PLUGIN_DIR . '/' . $config['plugin_file'];
+
+			if ( file_exists( $plugin_path ) && is_plugin_active( $config['plugin_file'] ) ) {
+				$grouped['active'][] = $config;
+			} elseif ( file_exists( $plugin_path ) ) {
+				$grouped['installed'][] = $config;
+			} else {
+				$grouped['available'][] = $config;
+			}
+		}
+
+		return $grouped;
+	}
+
+	private function acafs_render_integrations_section( $title, $description, $integrations, $state ) {
+		if ( empty( $integrations ) ) {
+			return;
+		}
+		?>
+		<h2><?php echo esc_html( $title ); ?></h2>
+		<p><?php echo esc_html( $description ); ?></p>
+		<?php
+		foreach ( $integrations as $integration ) {
+			$this->acafs_render_integration_card( $integration, $state );
+		}
+	}
+
+	private function acafs_render_integration_card( $config, $state ) {
+		?>
+		<div class="notice notice-info inline">
+			<p><strong><?php echo esc_html( $config['title'] ); ?></strong></p>
+			<?php if ( 'active' === $state ) : ?>
+				<label>
+					<input type="checkbox" name="<?php echo esc_attr( $config['option_name'] ); ?>" value="1" <?php checked( 1, (int) get_option( $config['option_name'], 0 ) ); ?>>
+					<?php echo esc_html( $config['description'] ); ?>
+				</label>
+			<?php elseif ( 'installed' === $state ) : ?>
+				<p><?php esc_html_e( 'This add-on is installed but inactive.', 'ac-advanced-flamingo-settings' ); ?></p>
+				<p><a class="button button-secondary" href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>"><?php esc_html_e( 'Activate Plugin', 'ac-advanced-flamingo-settings' ); ?></a></p>
+			<?php else : ?>
+				<p><?php esc_html_e( 'Premium integration add-on.', 'ac-advanced-flamingo-settings' ); ?> <span class="button button-small" aria-hidden="true"><?php echo esc_html( $config['price'] ); ?></span></p>
+				<p><a class="button button-primary" href="<?php echo esc_url( $config['purchase_url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Get the Add-on', 'ac-advanced-flamingo-settings' ); ?></a></p>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
