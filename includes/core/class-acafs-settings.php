@@ -139,13 +139,6 @@ class ACAFS_Settings {
 			'acafs-integrations'
 		);
 
-		add_settings_field(
-			'acafs_enable_divi_contact_capture',
-			__( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
-			array( $this, 'acafs_enable_divi_contact_capture_callback' ),
-			'acafs-integrations',
-			'acafs_integrations_section'
-		);
 	}
 
 	/**
@@ -170,14 +163,43 @@ class ACAFS_Settings {
 	 * Render the integrations settings page
 	 */
 	public function acafs_render_integrations_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$integrations_by_state = $this->acafs_get_integrations_grouped_by_state();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
+			<p><?php esc_html_e( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ); ?></p>
 			<form method="post" action="options.php">
+				<?php settings_fields( 'acafs_settings_group' ); ?>
+
 				<?php
-				settings_fields( 'acafs_settings_group' );
-				do_settings_sections( 'acafs-integrations' );
-				submit_button();
+				$this->acafs_render_integrations_section(
+					__( 'Activated Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These integrations are installed and active. Configure their capture settings below.', 'ac-advanced-flamingo-settings' ),
+					$integrations_by_state['active'],
+					'active'
+				);
+
+				$this->acafs_render_integrations_section(
+					__( 'Installed Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These add-ons are installed but not active yet. Activate the plugin to enable settings here.', 'ac-advanced-flamingo-settings' ),
+					$integrations_by_state['installed'],
+					'installed'
+				);
+
+				$this->acafs_render_integrations_section(
+					__( 'Available Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'Install these premium add-ons to capture submissions from additional builders.', 'ac-advanced-flamingo-settings' ),
+					$integrations_by_state['available'],
+					'available'
+				);
+
+				if ( ! empty( $integrations_by_state['active'] ) ) {
+					submit_button();
+				}
 				?>
 			</form>
 		</div>
@@ -341,5 +363,102 @@ class ACAFS_Settings {
         echo esc_html__( 'Enable Divi Contact Form → Flamingo capture', 'ac-advanced-flamingo-settings' );
         echo '</label>';
     }
+
+
+	/**
+	 * Get integration configurations.
+	 *
+	 * @return array<string,array<string,string>>
+	 */
+	private function acafs_get_integration_configs() {
+		return array(
+			'divi'            => array(
+				'label'          => __( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'    => 'acafs-compat-divi/acafs-compat-divi.php',
+				'option_name'    => 'acafs_enable_divi_contact_capture',
+				'purchase_url'   => 'https://arcadestudios.dev/',
+				'price'          => '$10',
+				'description'    => __( 'Capture Divi Contact Form submissions into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'activate_label' => __( 'Activate the Divi add-on plugin to configure this integration.', 'ac-advanced-flamingo-settings' ),
+			),
+			'wpbakery'        => array(
+				'label'          => __( 'WPBakery Form Builder', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'    => 'acafs-compat-wpbakery/acafs-compat-wpbakery.php',
+				'option_name'    => '',
+				'purchase_url'   => 'https://arcadestudios.dev/',
+				'price'          => '$10',
+				'description'    => __( 'Capture WPBakery form submissions into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'activate_label' => __( 'Activate the WPBakery add-on plugin to configure this integration.', 'ac-advanced-flamingo-settings' ),
+			),
+			'enfold'          => array(
+				'label'          => __( 'Enfold Contact Form', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'    => 'acafs-compat-enfold/acafs-compat-enfold.php',
+				'option_name'    => '',
+				'purchase_url'   => 'https://arcadestudios.dev/',
+				'price'          => '$10',
+				'description'    => __( 'Capture Enfold form submissions into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'activate_label' => __( 'Activate the Enfold add-on plugin to configure this integration.', 'ac-advanced-flamingo-settings' ),
+			),
+			'beaver_builder'  => array(
+				'label'          => __( 'Beaver Builder Contact Form', 'ac-advanced-flamingo-settings' ),
+				'plugin_file'    => 'acafs-compat-beaver-builder/acafs-compat-beaver-builder.php',
+				'option_name'    => '',
+				'purchase_url'   => 'https://arcadestudios.dev/',
+				'price'          => '$10',
+				'description'    => __( 'Capture Beaver Builder form submissions into Flamingo.', 'ac-advanced-flamingo-settings' ),
+				'activate_label' => __( 'Activate the Beaver Builder add-on plugin to configure this integration.', 'ac-advanced-flamingo-settings' ),
+			),
+		);
+	}
+
+	private function acafs_get_integrations_grouped_by_state() {
+		$grouped = array( 'active' => array(), 'installed' => array(), 'available' => array() );
+		foreach ( $this->acafs_get_integration_configs() as $config ) {
+			$state = $this->acafs_get_integration_state( $config['plugin_file'] );
+			$grouped[ $state ][] = $config;
+		}
+		return $grouped;
+	}
+
+	private function acafs_get_integration_state( $plugin_file ) {
+		$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . ltrim( $plugin_file, '/' );
+		if ( ! file_exists( $plugin_path ) ) {
+			return 'available';
+		}
+		if ( is_plugin_active( $plugin_file ) ) {
+			return 'active';
+		}
+		return 'installed';
+	}
+
+	private function acafs_render_integrations_section( $title, $description, $integrations, $state ) {
+		if ( empty( $integrations ) ) {
+			return;
+		}
+		echo '<h2 style="margin-top:24px;">' . esc_html( $title ) . '</h2>';
+		echo '<p>' . esc_html( $description ) . '</p>';
+		foreach ( $integrations as $config ) {
+			$this->acafs_render_integration_card( $config, $state );
+		}
+	}
+
+	private function acafs_render_integration_card( $config, $state ) {
+		echo '<div class="postbox" style="max-width: 720px; margin-bottom: 16px;"><div class="inside">';
+		echo '<h3>' . esc_html( $config['label'] ) . '</h3>';
+		echo '<p>' . esc_html( $config['description'] ) . '</p>';
+		if ( 'active' === $state && ! empty( $config['option_name'] ) ) {
+			$enabled = (bool) get_option( $config['option_name'], false );
+			echo '<label><input type="checkbox" name="' . esc_attr( $config['option_name'] ) . '" value="1" ' . checked( 1, $enabled, false ) . '> ';
+			echo esc_html__( 'Enable capture integration', 'ac-advanced-flamingo-settings' );
+			echo '</label>';
+		} elseif ( 'installed' === $state ) {
+			echo '<p><a class="button" href="' . esc_url( admin_url( 'plugins.php' ) ) . '">' . esc_html__( 'Go to Plugins to Activate', 'ac-advanced-flamingo-settings' ) . '</a></p>';
+			echo '<p>' . esc_html( $config['activate_label'] ) . '</p>';
+		} else {
+			echo '<p><span class="button button-secondary" style="cursor:default;">' . esc_html( $config['price'] ) . '</span></p>';
+			echo '<p><a class="button button-primary" href="' . esc_url( $config['purchase_url'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Get the Add-on', 'ac-advanced-flamingo-settings' ) . '</a></p>';
+		}
+		echo '</div></div>';
+	}
 
 }
