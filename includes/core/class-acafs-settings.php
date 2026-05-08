@@ -5,6 +5,8 @@ class ACAFS_Settings {
 
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'acafs_register_plugin_settings' ) );
+		add_action( 'admin_init', array( $this, 'acafs_handle_dismiss_integrations_notice' ) );
+		add_action( 'admin_notices', array( $this, 'acafs_maybe_render_integrations_admin_notice' ) );
 		add_action( 'acafs_render_settings_page', array( $this, 'acafs_render_settings_page' ) );
 		add_action( 'acafs_render_integrations_page', array( $this, 'acafs_render_integrations_page' ) );
 	}
@@ -148,6 +150,303 @@ class ACAFS_Settings {
 				submit_button();
 				?>
 			</form>
+			<?php $this->acafs_render_settings_page_integrations_cta(); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Get the integrations admin page URL.
+	 *
+	 * @return string
+	 */
+	public function acafs_get_integrations_page_url() {
+		return add_query_arg(
+			array(
+				'page' => 'acafs-integrations',
+			),
+			admin_url( 'admin.php' )
+		);
+	}
+
+	/**
+	 * Check whether the current user has dismissed the integrations notice.
+	 *
+	 * @return bool
+	 */
+	public function acafs_has_dismissed_integrations_notice() {
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return false;
+		}
+
+		return (bool) get_user_meta( $user_id, 'acafs_integrations_notice_dismissed', true );
+	}
+
+	/**
+	 * Dismiss integrations notice for the current user.
+	 *
+	 * @return void
+	 */
+	public function acafs_handle_dismiss_integrations_notice() {
+		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return;
+		}
+
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$action = isset( $_GET['acafs_action'] ) ? sanitize_text_field( wp_unslash( $_GET['acafs_action'] ) ) : '';
+		if ( 'dismiss_integrations_notice' !== $action ) {
+			return;
+		}
+
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'acafs_dismiss_integrations_notice' ) ) {
+			return;
+		}
+
+		update_user_meta( get_current_user_id(), 'acafs_integrations_notice_dismissed', 1 );
+
+		$redirect_url = isset( $_GET['acafs_redirect'] ) ? sanitize_url( wp_unslash( $_GET['acafs_redirect'] ) ) : admin_url();
+		$redirect_url = wp_validate_redirect( $redirect_url, admin_url() );
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Render notice promoting integrations when appropriate.
+	 *
+	 * @return void
+	 */
+	public function acafs_maybe_render_integrations_admin_notice() {
+		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return;
+		}
+
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) || $this->acafs_has_dismissed_integrations_notice() ) {
+			return;
+		}
+
+		$current_screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( isset( $current_screen->id ) && 'flamingo_page_acafs-integrations' === $current_screen->id ) {
+			return;
+		}
+
+		$grouped_integrations = $this->acafs_get_integrations_grouped_by_state();
+		$detected_integration = $this->acafs_get_detected_supported_integration();
+		$integrations_url     = $this->acafs_get_integrations_page_url();
+		$dismiss_url          = wp_nonce_url(
+			add_query_arg(
+				array(
+					'acafs_action'   => 'dismiss_integrations_notice',
+					'acafs_redirect' => rawurlencode( remove_query_arg( array( 'acafs_action', '_wpnonce', 'acafs_redirect' ) ) ),
+				),
+				admin_url( 'admin.php' )
+			),
+			'acafs_dismiss_integrations_notice'
+		);
+
+		$notice_map = array(
+			'divi' => array(
+				'title'   => __( 'Using Divi forms?', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Save Divi Contact Form submissions directly into Flamingo Inbound Messages with the Divi integration add-on.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Divi Integration', 'ac-advanced-flamingo-settings' ),
+			),
+			'wpbakery' => array(
+				'title'   => __( 'Using WPBakery forms?', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Save WPBakery contact form submissions directly into Flamingo Inbound Messages with the WPBakery integration add-on.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View WPBakery Integration', 'ac-advanced-flamingo-settings' ),
+			),
+			'beaver_builder' => array(
+				'title'   => __( 'Using Beaver Builder forms?', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Save Beaver Builder form submissions directly into Flamingo Inbound Messages with the Beaver Builder integration add-on.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Beaver Builder Integration', 'ac-advanced-flamingo-settings' ),
+			),
+			'enfold' => array(
+				'title'   => __( 'Using Enfold forms?', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Save Enfold contact form submissions directly into Flamingo Inbound Messages with the Enfold integration add-on.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Enfold Integration', 'ac-advanced-flamingo-settings' ),
+			),
+		);
+
+		$active_notice_map = array(
+			'divi' => array(
+				'title'   => __( 'Divi integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Divi Contact Form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'wpbakery' => array(
+				'title'   => __( 'WPBakery integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'WPBakery form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'beaver_builder' => array(
+				'title'   => __( 'Beaver Builder integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Beaver Builder form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'enfold' => array(
+				'title'   => __( 'Enfold integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Enfold form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+		);
+
+		$notice_data = array(
+			'title'   => __( 'Extend Flamingo with form integrations', 'ac-advanced-flamingo-settings' ),
+			'message' => __( 'AC Advanced Flamingo Settings can connect Flamingo with additional form builders and themes, helping you store more submissions inside WordPress.', 'ac-advanced-flamingo-settings' ),
+			'button'  => __( 'View Integrations', 'ac-advanced-flamingo-settings' ),
+			'url'     => $integrations_url,
+			'class'   => 'notice-info',
+		);
+
+		if ( isset( $notice_map[ $detected_integration ] ) ) {
+			$notice_data['title']   = $notice_map[ $detected_integration ]['title'];
+			$notice_data['message'] = $notice_map[ $detected_integration ]['message'];
+			$notice_data['button']  = $notice_map[ $detected_integration ]['button'];
+		}
+
+		$detected_config = $this->acafs_get_integration_config_by_key( $detected_integration );
+		if ( ! empty( $detected_config ) && $this->acafs_is_integration_active( $detected_config['plugin_file'] ) && isset( $active_notice_map[ $detected_integration ] ) ) {
+			$notice_data = $active_notice_map[ $detected_integration ];
+		} elseif ( empty( $detected_integration ) && empty( $grouped_integrations['available'] ) ) {
+			return;
+		}
+		?>
+		<div class="notice <?php echo esc_attr( $notice_data['class'] ); ?>">
+			<p><strong><?php echo esc_html( $notice_data['title'] ); ?></strong></p>
+			<p><?php echo esc_html( $notice_data['message'] ); ?></p>
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( $notice_data['url'] ); ?>">
+					<?php echo esc_html( $notice_data['button'] ); ?>
+				</a>
+				<a class="button button-secondary" href="<?php echo esc_url( $dismiss_url ); ?>">
+					<?php esc_html_e( 'Dismiss', 'ac-advanced-flamingo-settings' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Detect which supported builder/theme is in use.
+	 *
+	 * @return string
+	 */
+	public function acafs_get_detected_supported_integration() {
+		if ( $this->acafs_is_theme_match( array( 'divi' ) ) ) {
+			return 'divi';
+		}
+
+		if ( $this->acafs_is_wpbakery_detected() ) {
+			return 'wpbakery';
+		}
+
+		if ( $this->acafs_is_beaver_builder_detected() ) {
+			return 'beaver_builder';
+		}
+
+		if ( $this->acafs_is_theme_match( array( 'enfold', 'avia' ) ) ) {
+			return 'enfold';
+		}
+
+		return '';
+	}
+
+	/**
+	 * Get a single integration config by key.
+	 *
+	 * @param string $key Integration key.
+	 * @return array<string,string>
+	 */
+	public function acafs_get_integration_config_by_key( $key ) {
+		foreach ( $this->acafs_get_integration_configs() as $integration ) {
+			if ( isset( $integration['key'] ) && $integration['key'] === $key ) {
+				return $integration;
+			}
+		}
+
+		return array();
+	}
+
+	public function acafs_is_theme_match( $needles ) {
+		$theme = wp_get_theme();
+		$haystacks = array(
+			strtolower( (string) $theme->get( 'Name' ) ),
+			strtolower( (string) $theme->get_template() ),
+			strtolower( (string) $theme->get_stylesheet() ),
+		);
+
+		$parent_theme = $theme->parent();
+		if ( $parent_theme instanceof WP_Theme ) {
+			$haystacks[] = strtolower( (string) $parent_theme->get( 'Name' ) );
+			$haystacks[] = strtolower( (string) $parent_theme->get_template() );
+			$haystacks[] = strtolower( (string) $parent_theme->get_stylesheet() );
+		}
+
+		foreach ( $needles as $needle ) {
+			$needle = strtolower( (string) $needle );
+			foreach ( $haystacks as $haystack ) {
+				if ( false !== strpos( $haystack, $needle ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	public function acafs_is_beaver_builder_detected() {
+		if ( class_exists( 'FLBuilder' ) ) {
+			return true;
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return is_plugin_active( 'bb-plugin/fl-builder.php' ) || is_plugin_active( 'beaver-builder-lite-version/fl-builder.php' );
+	}
+
+	public function acafs_is_wpbakery_detected() {
+		if ( class_exists( 'Vc_Manager' ) || class_exists( 'WPBakeryVisualComposerAbstract' ) ) {
+			return true;
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		return is_plugin_active( 'js_composer/js_composer.php' );
+	}
+
+	/**
+	 * Render CTA card linking to integrations page on settings screen.
+	 *
+	 * @return void
+	 */
+	public function acafs_render_settings_page_integrations_cta() {
+		?>
+		<div class="postbox" style="max-width:860px;margin-top:24px;">
+			<div class="inside">
+				<h2 style="margin-top:0;"><?php esc_html_e( 'Need more form integrations?', 'ac-advanced-flamingo-settings' ); ?></h2>
+				<p><?php esc_html_e( 'Explore available ACAFS add-ons for Divi, WPBakery, Enfold and Beaver Builder, and store more contact form submissions in Flamingo.', 'ac-advanced-flamingo-settings' ); ?></p>
+				<p>
+					<a class="button button-primary" href="<?php echo esc_url( $this->acafs_get_integrations_page_url() ); ?>">
+						<?php esc_html_e( 'Configure Integrations', 'ac-advanced-flamingo-settings' ); ?>
+					</a>
+				</p>
+			</div>
 		</div>
 		<?php
 	}
