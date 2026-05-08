@@ -132,27 +132,6 @@ class ACAFS_Settings {
 			'acafs_upload_settings_section'
 		);
 
-		add_settings_section(
-			'acafs_integrations_section',
-			__( 'Integrations', 'ac-advanced-flamingo-settings' ),
-			function () {
-				echo '<p>' . esc_html__( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ) . '</p>';
-			},
-			'acafs-integrations'
-		);
-
-		foreach ( $this->acafs_get_integration_configs() as $integration ) {
-			add_settings_field(
-				$integration['option_name'],
-				$integration['label'],
-				array( $this, 'acafs_render_integration_field' ),
-				'acafs-integrations',
-				'acafs_integrations_section',
-				array(
-					'config' => $integration,
-				)
-			);
-		}
 	}
 
 	/**
@@ -177,13 +156,32 @@ class ACAFS_Settings {
 	 * Render the integrations settings page
 	 */
 	public function acafs_render_integrations_page() {
+		$grouped_integrations = $this->acafs_get_integrations_grouped_by_state();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
+			<p><?php esc_html_e( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ); ?></p>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'acafs_settings_group' );
-				do_settings_sections( 'acafs-integrations' );
+				$this->acafs_render_integrations_section(
+					__( 'Activated Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These integrations are active and can be enabled or disabled below.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['active'],
+					'active'
+				);
+				$this->acafs_render_integrations_section(
+					__( 'Installed Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'These add-ons are installed but must be activated before capture can be enabled.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['installed'],
+					'installed'
+				);
+				$this->acafs_render_integrations_section(
+					__( 'Available Integrations', 'ac-advanced-flamingo-settings' ),
+					__( 'Install a premium add-on to capture submissions from these builders.', 'ac-advanced-flamingo-settings' ),
+					$grouped_integrations['available'],
+					'available'
+				);
 				submit_button();
 				?>
 			</form>
@@ -409,14 +407,14 @@ class ACAFS_Settings {
 
 	public function acafs_get_integration_state( $plugin_file ) {
 		if ( ! $this->acafs_is_integration_installed( $plugin_file ) ) {
-			return 'not_installed';
+			return 'available';
 		}
 
 		if ( $this->acafs_is_integration_active( $plugin_file ) ) {
 			return 'active';
 		}
 
-		return 'inactive';
+		return 'installed';
 	}
 
 	public function acafs_render_integration_field( $args ) {
@@ -432,12 +430,12 @@ class ACAFS_Settings {
 
 		$state = $this->acafs_get_integration_state( $config['plugin_file'] );
 
-		if ( 'not_installed' === $state ) {
+		if ( 'available' === $state ) {
 			$this->acafs_render_integration_upgrade_card( $config );
 			return;
 		}
 
-		if ( 'inactive' === $state ) {
+		if ( 'installed' === $state ) {
 			$this->acafs_render_integration_activation_card( $config );
 			return;
 		}
@@ -509,6 +507,83 @@ class ACAFS_Settings {
 		echo esc_html( $config['active_checkbox_label'] );
 		echo '</label>';
 		echo '<p class="description">' . esc_html( $config['description'] ) . '</p>';
+	}
+
+	/**
+	 * Group integration configs by detected state.
+	 *
+	 * @return array<string,array<int,array<string,string>>>
+	 */
+	public function acafs_get_integrations_grouped_by_state() {
+		$grouped = array(
+			'active'    => array(),
+			'installed' => array(),
+			'available' => array(),
+		);
+
+		foreach ( $this->acafs_get_integration_configs() as $integration ) {
+			$state = $this->acafs_get_integration_state( $integration['plugin_file'] );
+			if ( isset( $grouped[ $state ] ) ) {
+				$grouped[ $state ][] = $integration;
+			}
+		}
+
+		return $grouped;
+	}
+
+	/**
+	 * Render integrations section for a specific state.
+	 *
+	 * @param string                                    $title        Section title.
+	 * @param string                                    $description  Section description.
+	 * @param array<int,array<string,string>>           $integrations Integrations for this section.
+	 * @param string                                    $state        Integration state.
+	 * @return void
+	 */
+	public function acafs_render_integrations_section( $title, $description, $integrations, $state ) {
+		if ( empty( $integrations ) ) {
+			return;
+		}
+		?>
+		<h2 style="margin-top:24px;"><?php echo esc_html( $title ); ?></h2>
+		<p><?php echo esc_html( $description ); ?></p>
+		<?php
+		foreach ( $integrations as $integration ) {
+			$this->acafs_render_integration_card( $integration, $state );
+		}
+	}
+
+	/**
+	 * Render an integration card by state.
+	 *
+	 * @param array<string,string> $config Integration config.
+	 * @param string               $state  Integration state.
+	 * @return void
+	 */
+	public function acafs_render_integration_card( $config, $state ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			echo esc_html__( 'You do not have permission to manage this setting.', 'ac-advanced-flamingo-settings' );
+			return;
+		}
+
+		if ( 'available' === $state ) {
+			$this->acafs_render_integration_upgrade_card( $config );
+			return;
+		}
+
+		if ( 'installed' === $state ) {
+			$this->acafs_render_integration_activation_card( $config );
+			return;
+		}
+
+		?>
+		<div class="postbox" style="max-width:860px;">
+			<div class="inside">
+				<h3 style="margin-top:0;"><?php echo esc_html( $config['label'] ); ?></h3>
+				<?php $this->acafs_render_integration_checkbox( $config ); ?>
+			</div>
+		</div>
+		<?php
 	}
 
 }
