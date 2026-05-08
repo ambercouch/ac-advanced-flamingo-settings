@@ -170,18 +170,129 @@ class ACAFS_Settings {
 	 * Render the integrations settings page
 	 */
 	public function acafs_render_integrations_page() {
+		$groups = $this->acafs_get_grouped_integrations();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'acafs_settings_group' );
-				do_settings_sections( 'acafs-integrations' );
+				$this->acafs_render_grouped_integration_sections( $groups );
 				submit_button();
 				?>
 			</form>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Build integration config list.
+	 *
+	 * @return array<int, array<string, string>>
+	 */
+	private function acafs_get_integration_configs() {
+		return array(
+			array(
+				'option_name' => 'acafs_enable_divi_contact_capture',
+				'plugin_file' => 'acafs-divi-integration/acafs-divi-integration.php',
+				'field_label' => __( 'Divi Contact Form', 'ac-advanced-flamingo-settings' ),
+			),
+		);
+	}
+
+	/**
+	 * Determine integration plugin state.
+	 *
+	 * @param string $plugin_file Plugin file path.
+	 * @return string
+	 */
+	private function acafs_get_integration_state( $plugin_file ) {
+		include_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+		if ( file_exists( WP_PLUGIN_DIR . '/' . $plugin_file ) ) {
+			return is_plugin_active( $plugin_file ) ? 'active' : 'installed';
+		}
+
+		return 'available';
+	}
+
+	/**
+	 * Group integrations by state.
+	 *
+	 * @return array<string, array<int, array<string, string>>>
+	 */
+	private function acafs_get_grouped_integrations() {
+		$configs = $this->acafs_get_integration_configs();
+		$groups  = array(
+			'active'    => array(),
+			'installed' => array(),
+			'available' => array(),
+		);
+
+		foreach ( $configs as $config ) {
+			$state              = $this->acafs_get_integration_state( $config['plugin_file'] );
+			$groups[ $state ][] = $config;
+		}
+
+		return $groups;
+	}
+
+	/**
+	 * Render integration sections in grouped order.
+	 *
+	 * @param array<string, array<int, array<string, string>>> $groups Grouped integrations.
+	 * @return void
+	 */
+	private function acafs_render_grouped_integration_sections( $groups ) {
+		$sections = array(
+			'active'    => array(
+				'heading' => __( 'Activated Integrations', 'ac-advanced-flamingo-settings' ),
+				'intro'   => __( 'These integrations are active and can be configured below.', 'ac-advanced-flamingo-settings' ),
+			),
+			'installed' => array(
+				'heading' => __( 'Installed Integrations', 'ac-advanced-flamingo-settings' ),
+				'intro'   => __( 'These add-ons are installed but need to be activated before they can be used.', 'ac-advanced-flamingo-settings' ),
+			),
+			'available' => array(
+				'heading' => __( 'Available Integrations', 'ac-advanced-flamingo-settings' ),
+				'intro'   => __( 'Extend Flamingo with additional form builder integrations.', 'ac-advanced-flamingo-settings' ),
+			),
+		);
+
+		foreach ( array( 'active', 'installed', 'available' ) as $state ) {
+			if ( empty( $groups[ $state ] ) ) {
+				continue;
+			}
+			echo '<h2>' . esc_html( $sections[ $state ]['heading'] ) . '</h2>';
+			echo '<p>' . esc_html( $sections[ $state ]['intro'] ) . '</p>';
+			echo '<table class="form-table" role="presentation"><tbody>';
+			foreach ( $groups[ $state ] as $config ) {
+				$this->acafs_render_integration_row( $config, $state );
+			}
+			echo '</tbody></table>';
+		}
+	}
+
+	/**
+	 * Render a single integration row using existing state UIs.
+	 *
+	 * @param array<string, string> $config Integration config.
+	 * @param string                $state  Integration state.
+	 * @return void
+	 */
+	private function acafs_render_integration_row( $config, $state ) {
+		echo '<tr>';
+		echo '<th scope="row">' . esc_html( $config['field_label'] ) . '</th>';
+		echo '<td>';
+		if ( 'active' === $state ) {
+			$this->acafs_enable_divi_contact_capture_callback();
+		} elseif ( 'installed' === $state ) {
+			echo '<p>' . esc_html__( 'This add-on is installed but inactive. Activate it from the Plugins page to enable this integration.', 'ac-advanced-flamingo-settings' ) . '</p>';
+		} else {
+			echo '<p>' . esc_html__( 'This integration add-on is not installed. Purchase and install the add-on to enable this integration.', 'ac-advanced-flamingo-settings' ) . '</p>';
+		}
+		echo '</td>';
+		echo '</tr>';
 	}
 
 	/**
