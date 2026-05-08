@@ -235,10 +235,6 @@ class ACAFS_Settings {
 		}
 
 		$grouped_integrations = $this->acafs_get_integrations_grouped_by_state();
-		if ( empty( $grouped_integrations['available'] ) ) {
-			return;
-		}
-
 		$detected_integration = $this->acafs_get_detected_supported_integration();
 		$integrations_url     = $this->acafs_get_integrations_page_url();
 		$dismiss_url          = wp_nonce_url(
@@ -275,21 +271,63 @@ class ACAFS_Settings {
 			),
 		);
 
+		$active_notice_map = array(
+			'divi' => array(
+				'title'   => __( 'Divi integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Divi Contact Form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'wpbakery' => array(
+				'title'   => __( 'WPBakery integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'WPBakery form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'beaver_builder' => array(
+				'title'   => __( 'Beaver Builder integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Beaver Builder form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+			'enfold' => array(
+				'title'   => __( 'Enfold integration is active', 'ac-advanced-flamingo-settings' ),
+				'message' => __( 'Enfold form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
+				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
+				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
+				'class'   => 'notice-success',
+			),
+		);
+
 		$notice_data = array(
 			'title'   => __( 'Extend Flamingo with form integrations', 'ac-advanced-flamingo-settings' ),
 			'message' => __( 'AC Advanced Flamingo Settings can connect Flamingo with additional form builders and themes, helping you store more submissions inside WordPress.', 'ac-advanced-flamingo-settings' ),
 			'button'  => __( 'View Integrations', 'ac-advanced-flamingo-settings' ),
+			'url'     => $integrations_url,
+			'class'   => 'notice-info',
 		);
 
 		if ( isset( $notice_map[ $detected_integration ] ) ) {
-			$notice_data = $notice_map[ $detected_integration ];
+			$notice_data['title']   = $notice_map[ $detected_integration ]['title'];
+			$notice_data['message'] = $notice_map[ $detected_integration ]['message'];
+			$notice_data['button']  = $notice_map[ $detected_integration ]['button'];
+		}
+
+		$detected_config = $this->acafs_get_integration_config_by_key( $detected_integration );
+		if ( ! empty( $detected_config ) && $this->acafs_is_integration_active( $detected_config['plugin_file'] ) && isset( $active_notice_map[ $detected_integration ] ) ) {
+			$notice_data = $active_notice_map[ $detected_integration ];
+		} elseif ( empty( $detected_integration ) && empty( $grouped_integrations['available'] ) ) {
+			return;
 		}
 		?>
-		<div class="notice notice-info">
+		<div class="notice <?php echo esc_attr( $notice_data['class'] ); ?>">
 			<p><strong><?php echo esc_html( $notice_data['title'] ); ?></strong></p>
 			<p><?php echo esc_html( $notice_data['message'] ); ?></p>
 			<p>
-				<a class="button button-primary" href="<?php echo esc_url( $integrations_url ); ?>">
+				<a class="button button-primary" href="<?php echo esc_url( $notice_data['url'] ); ?>">
 					<?php echo esc_html( $notice_data['button'] ); ?>
 				</a>
 				<a class="button button-secondary" href="<?php echo esc_url( $dismiss_url ); ?>">
@@ -323,6 +361,22 @@ class ACAFS_Settings {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Get a single integration config by key.
+	 *
+	 * @param string $key Integration key.
+	 * @return array<string,string>
+	 */
+	public function acafs_get_integration_config_by_key( $key ) {
+		foreach ( $this->acafs_get_integration_configs() as $integration ) {
+			if ( isset( $integration['key'] ) && $integration['key'] === $key ) {
+				return $integration;
+			}
+		}
+
+		return array();
 	}
 
 	public function acafs_is_theme_match( $needles ) {
