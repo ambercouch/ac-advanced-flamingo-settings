@@ -21,7 +21,6 @@ class ACAFS_Flamingo_File_Linker {
 	 * Hook into the admin.
 	 */
 	public function __construct() {
-		error_log( 'ACAFS_Flamingo_File_Linker loaded' );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 

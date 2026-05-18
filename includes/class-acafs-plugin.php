@@ -53,7 +53,6 @@ class ACAFS_Plugin {
 	 * Instantiate and initialize plugin modules.
 	 */
 	private function init_modules() {
-		error_log( 'init_modules' );
 		// Background import handler
 		$this->import_process = new ACAFS_Background_Import();
 
