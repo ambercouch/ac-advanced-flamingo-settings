@@ -9,10 +9,13 @@ class ACAFS_Uploaded_Files {
 
 	const DELETE_ACTION     = 'acafs_delete_upload';
 	const DELETE_ALL_ACTION = 'acafs_delete_all_uploads';
+	const DOWNLOAD_ACTION   = 'acafs_download_uploaded_file';
+	const DOWNLOAD_NONCE    = 'acafs_download_uploaded_file_nonce';
 
 	public function __construct() {
 		add_action( 'acafs_render_uploaded_files_page', array( $this, 'render_page' ) );
 		add_action( 'admin_init', array( $this, 'handle_actions' ) );
+		add_action( 'admin_post_' . self::DOWNLOAD_ACTION, array( $this, 'acafs_download_uploaded_file' ) );
 	}
 
 	/**
@@ -80,6 +83,7 @@ class ACAFS_Uploaded_Files {
 			<table class="widefat striped">
 				<thead>
 					<tr>
+						<th><?php esc_html_e( 'Preview', 'ac-advanced-flamingo-settings' ); ?></th>
 						<th><?php esc_html_e( 'File Name', 'ac-advanced-flamingo-settings' ); ?></th>
 						<th><?php esc_html_e( 'File Link', 'ac-advanced-flamingo-settings' ); ?></th>
 						<th><?php esc_html_e( 'Actions', 'ac-advanced-flamingo-settings' ); ?></th>
@@ -88,6 +92,7 @@ class ACAFS_Uploaded_Files {
 				<tbody>
 					<?php foreach ( $files as $file ) : ?>
 						<tr>
+							<td><?php echo wp_kses_post( $this->get_preview_markup( $file ) ); ?></td>
 							<td><?php echo esc_html( $file['name'] ); ?></td>
 							<td>
 								<a href="<?php echo esc_url( $file['url'] ); ?>" target="_blank" rel="noopener">
@@ -95,6 +100,9 @@ class ACAFS_Uploaded_Files {
 								</a>
 							</td>
 							<td>
+								<a class="button button-secondary button-small" href="<?php echo esc_url( $file['download_url'] ); ?>">
+									<?php esc_html_e( 'Download', 'ac-advanced-flamingo-settings' ); ?>
+								</a>
 								<a class="button button-small" href="<?php echo esc_url( $file['delete_url'] ); ?>">
 									<?php esc_html_e( 'Delete', 'ac-advanced-flamingo-settings' ); ?>
 								</a>
@@ -164,9 +172,13 @@ class ACAFS_Uploaded_Files {
 			);
 
 			$files[] = array(
-				'name'       => $file_info->getFilename(),
-				'url'        => trailingslashit( $base_url ) . $relative,
-				'delete_url' => $delete_url,
+				'name'         => $file_info->getFilename(),
+				'url'          => trailingslashit( $base_url ) . $relative,
+				'path'         => $full_path,
+				'relative'     => $relative,
+				'mime'         => $this->get_file_mime_type( $full_path ),
+				'delete_url'   => $delete_url,
+				'download_url' => $this->get_download_url( $relative ),
 			);
 		}
 
@@ -178,6 +190,163 @@ class ACAFS_Uploaded_Files {
 		);
 
 		return $files;
+	}
+
+	/**
+	 * Build secure download URL for a file.
+	 *
+	 * @param string $relative Relative file path.
+	 * @return string
+	 */
+	private function get_download_url( $relative ) {
+		$raw_url = add_query_arg(
+			array(
+				'action' => self::DOWNLOAD_ACTION,
+				'file'   => rawurlencode( $relative ),
+			),
+			admin_url( 'admin-post.php' )
+		);
+
+		return wp_nonce_url( $raw_url, self::DOWNLOAD_NONCE );
+	}
+
+	/**
+	 * Get file mime type.
+	 *
+	 * @param string $full_path Absolute file path.
+	 * @return string
+	 */
+	private function get_file_mime_type( $full_path ) {
+		$mime_type = wp_check_filetype( basename( $full_path ) );
+		$mime      = isset( $mime_type['type'] ) ? $mime_type['type'] : '';
+
+		if ( strpos( $mime, 'image/' ) === 0 ) {
+			$image_mime = wp_get_image_mime( $full_path );
+			if ( ! empty( $image_mime ) ) {
+				$mime = $image_mime;
+			}
+		}
+
+		return (string) $mime;
+	}
+
+	/**
+	 * Render preview markup.
+	 *
+	 * @param array $file File data.
+	 * @return string
+	 */
+	private function get_preview_markup( $file ) {
+		$mime = isset( $file['mime'] ) ? (string) $file['mime'] : '';
+		$name = isset( $file['name'] ) ? (string) $file['name'] : '';
+
+		if ( 0 === strpos( $mime, 'image/' ) ) {
+			return sprintf(
+				'<img src="%1$s" alt="%2$s" style="width:72px;height:auto;max-height:72px;" />',
+				esc_url( $file['url'] ),
+				esc_attr(
+					sprintf(
+						/* translators: %s: file name. */
+						__( 'Preview of %s', 'ac-advanced-flamingo-settings' ),
+						$name
+					)
+				)
+			);
+		}
+
+		$icon_url = wp_mime_type_icon( $mime );
+		if ( ! empty( $icon_url ) ) {
+			return sprintf(
+				'<img src="%1$s" alt="%2$s" style="width:48px;height:auto;" />',
+				esc_url( $icon_url ),
+				esc_attr(
+					sprintf(
+						/* translators: %s: file name. */
+						__( 'File icon for %s', 'ac-advanced-flamingo-settings' ),
+						$name
+					)
+				)
+			);
+		}
+
+		return '<span class="dashicons dashicons-media-default" aria-hidden="true"></span>';
+	}
+
+	/**
+	 * Handle uploaded file download.
+	 *
+	 * @return void
+	 */
+	public function acafs_download_uploaded_file() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to download this file.', 'ac-advanced-flamingo-settings' ) );
+		}
+
+		check_admin_referer( self::DOWNLOAD_NONCE );
+
+		$relative = isset( $_GET['file'] ) ? sanitize_text_field( wp_unslash( rawurldecode( $_GET['file'] ) ) ) : '';
+		$paths    = $this->get_upload_paths();
+
+		if ( ! $paths || '' === $relative ) {
+			wp_die( esc_html__( 'Invalid download request.', 'ac-advanced-flamingo-settings' ) );
+		}
+
+		$full_path = $this->get_valid_file_path( $paths['basedir'], $relative );
+		if ( ! $full_path || ! is_readable( $full_path ) ) {
+			wp_die( esc_html__( 'File not found.', 'ac-advanced-flamingo-settings' ) );
+		}
+
+		$file_name = basename( $full_path );
+		$mime_type = $this->get_file_mime_type( $full_path );
+		if ( '' === $mime_type ) {
+			$mime_type = 'application/octet-stream';
+		}
+
+		nocache_headers();
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Type: ' . $mime_type );
+		header( 'Content-Disposition: attachment; filename="' . rawurlencode( $file_name ) . '"' );
+		$file_size = filesize( $full_path );
+		if ( false !== $file_size ) {
+			header( 'Content-Length: ' . (string) absint( $file_size ) );
+		}
+
+		readfile( $full_path );
+		exit;
+	}
+
+	/**
+	 * Validate file path belongs to plugin managed directory.
+	 *
+	 * @param string $base_dir Base directory.
+	 * @param string $relative Relative path.
+	 * @return string|false
+	 */
+	private function get_valid_file_path( $base_dir, $relative ) {
+		if ( '' === $relative ) {
+			return false;
+		}
+
+		$base = realpath( trailingslashit( $base_dir ) );
+		if ( ! $base ) {
+			return false;
+		}
+
+		$relative_path = ltrim( str_replace( '\\', '/', $relative ), '/\\' );
+		$full_path     = realpath( trailingslashit( $base_dir ) . $relative_path );
+
+		if ( ! $full_path || ! is_file( $full_path ) ) {
+			return false;
+		}
+
+		$base = trailingslashit( wp_normalize_path( $base ) );
+		$file = wp_normalize_path( $full_path );
+
+		if ( 0 !== strpos( $file, $base ) ) {
+			return false;
+		}
+
+		return $full_path;
 	}
 
 	/**
