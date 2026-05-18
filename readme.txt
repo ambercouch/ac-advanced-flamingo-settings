@@ -3,22 +3,22 @@
 Contributors: amberCouch
 Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 5.4
-Tested up to: 6.9
+Tested up to: 6.9.4
 Requires PHP: 7.2
-Stable tag: 1.4.3
+Stable tag: 1.5.0
 
 License: GPLv2 or later
-License URI: [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html)
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AC Advanced Flamingo Settings enhances and extends the functionality of the CF7 Flamingo plugin by adding customization options, import/export tools, and improved handling of uploaded files.
+AC Advanced Flamingo Settings enhances and extends the functionality of the CF7 Flamingo plugin by adding customization options, import/export tools, improved uploaded file handling, and optional integration management.
 
 == Description ==
 
 Enhance Flamingo with additional customization options!
 
-This plugin extends Flamingo, the Contact Form 7 database storage plugin, by adding powerful features for better form submission management:
+This plugin extends Flamingo, the Contact Form 7 database storage plugin, by adding useful tools for better form submission management:
 
-* **Import/Export Feature (Enhanced)**
+* **Import/Export Feature**
 
   * Export Flamingo messages to a JSON file for backup or migration.
   * Import messages back into Flamingo while preserving all metadata, including the "Channel" column.
@@ -26,17 +26,27 @@ This plugin extends Flamingo, the Contact Form 7 database storage plugin, by add
   * Duplicate messages are automatically detected and skipped using content hashing.
   * Clear and reliable admin notices summarise import results.
 
-* **Persistent File Uploads (Optional)**
+* **Persistent File Uploads**
 
   * Optionally persist Contact Form 7 uploads to permanent URLs.
   * Stored upload URLs can be viewed and accessed from Flamingo messages.
-  * **Disabled by default** to avoid unexpected storage growth.
+  * Persistent uploads are **disabled by default** to avoid unexpected storage growth.
 
-* **Uploaded Files Management (New)**
+* **Uploaded Files Management**
 
   * Dedicated admin screen to view all persisted uploaded files.
-  * Download files directly via secure links.
+  * Image uploads display thumbnail previews.
+  * Non-image uploads display file-type icons.
+  * Download files directly using a dedicated Download button.
   * Delete individual files or bulk delete all stored uploads.
+
+* **Integrations Management**
+
+  * Dedicated Integrations screen for managing optional add-ons.
+  * View activated, installed, and available integrations from one place.
+  * See available integration support for Divi, WPBakery, Enfold, and Beaver Builder.
+  * Activate installed add-ons where available.
+  * Access integration-specific settings when supported by an active add-on.
 
 * **Enhanced Inbound Messages**
 
@@ -54,7 +64,7 @@ This plugin extends Flamingo, the Contact Form 7 database storage plugin, by add
 
   * A **Settings** link is added to the WordPress **Plugins** page for quick access.
 
-This plugin is ideal for sites that rely heavily on Flamingo and need better organisation, safer backups, and optional long-term file retention.
+This plugin is ideal for sites that rely heavily on Flamingo and need better organisation, safer backups, optional long-term file retention, and easier management of compatible add-ons.
 
 == Installation ==
 
@@ -63,6 +73,7 @@ This plugin is ideal for sites that rely heavily on Flamingo and need better org
 3. Go to **Settings → AC Flamingo** to configure your preferences.
 4. For message import/export, go to **Flamingo → Message Sync**.
 5. To manage stored uploads, go to **Flamingo → Uploaded Files**.
+6. To view optional add-ons, go to the **Integrations** screen in the Flamingo/ACAFS admin area.
 
 == Frequently Asked Questions ==
 
@@ -72,8 +83,20 @@ No. AC Advanced Flamingo Settings is an extension for Flamingo and requires it t
 = Is persistent file upload enabled by default? =
 No. Persistent uploads are **disabled by default** and must be explicitly enabled in the settings.
 
+= Can I preview uploaded files? =
+Yes. Image uploads show thumbnail previews on the Uploaded Files page. Non-image files show a file-type icon.
+
+= Can I download uploaded files directly? =
+Yes. Each uploaded file has a dedicated Download button. Existing file name links also continue to work.
+
 = Can I delete uploaded files after import? =
 Yes. You can delete individual files or remove all stored uploads from the Uploaded Files admin page.
+
+= What does the Integrations screen do? =
+The Integrations screen helps you view and manage optional add-ons that extend Flamingo support to other form builders and themes.
+
+= Which integrations are shown? =
+The Integrations screen can show available support for Divi, WPBakery, Enfold, and Beaver Builder.
 
 = Can I choose which form fields appear in the Inbound Messages table? =
 Yes. You can select exactly which fields are displayed via the settings panel.
@@ -92,9 +115,22 @@ Yes. The Address Book can be disabled entirely from the settings.
 1. **Settings Page** – Configure Flamingo behaviour and plugin options.
 2. **Enhanced Inbound Messages** – Display submission details directly in the message list.
 3. **Import/Export Page** – Backup and restore Flamingo messages.
-4. **Uploaded Files Page** – View and manage persisted file uploads.
+4. **Uploaded Files Page** – View, preview, download, and manage persisted file uploads.
+5. **Integrations Page** – View and manage optional Flamingo integrations.
 
 == Changelog ==
+
+= 1.5.0 =
+
+* Improve the Uploaded Files admin page with image thumbnails for image uploads.
+* Add file-type icons for non-image uploads on the Uploaded Files admin page.
+* Add a dedicated Download button for each stored uploaded file.
+* Add a dedicated Integrations screen for managing optional add-ons.
+* Add integration status sections for activated, installed, and available integrations.
+* Add integration cards for Divi, WPBakery, Enfold, and Beaver Builder.
+* Add prompts for installed integrations that have not yet been activated.
+* Add integration-specific settings when supported by an active add-on.
+* Confirm compatibility with WordPress 6.9.4.
 
 = 1.4.3 =
 
@@ -136,8 +172,8 @@ Yes. The Address Book can be disabled entirely from the settings.
 
 == Upgrade Notice ==
 
-= 1.4.3 =
-Introduces an Uploaded Files management screen and disables persistent uploads by default. Review your settings after upgrading.
+= 1.5.0 =
+Improves the Uploaded Files admin page with thumbnails, file-type icons, and direct download buttons. Also introduces a new Integrations screen for managing optional add-ons.
 
 == Support ==
-For support or feature requests, visit [https://ambercouch.co.uk/](https://ambercouch.co.uk/)
+For support or feature requests, visit https://ambercouch.co.uk/
