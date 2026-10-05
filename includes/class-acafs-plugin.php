@@ -34,7 +34,9 @@ class ACAFS_Plugin {
 
 		// Features
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-columns.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-export-service.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-export.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-import-service.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-import.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-cf7-persist-uploads.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-uploaded-files.php';
@@ -54,8 +56,11 @@ class ACAFS_Plugin {
 	 */
 	private function init_modules() {
 		error_log( 'init_modules' );
+		$export_service = new ACAFS_Export_Service();
+		$import_service = new ACAFS_Import_Service();
+
 		// Background import handler
-		$this->import_process = new ACAFS_Background_Import();
+		$this->import_process = new ACAFS_Background_Import( $import_service );
 
 		// Core modules
 		new ACAFS_Hooks();
@@ -65,8 +70,8 @@ class ACAFS_Plugin {
 		//        // Features
 		new ACAFS_Columns();
 		//new ACAFS_Single_Message();
-		new ACAFS_Export( $this->import_process ); // Pass background import if needed
-		new ACAFS_Import( $this->import_process );
+		new ACAFS_Export( $export_service );
+		new ACAFS_Import( $this->import_process, $import_service );
 		new ACAFS_Uploaded_Files();
 		if ( get_option( 'acafs_enable_persistent_uploads', false ) ) {
 			new ACAFS_CF7_Persist_Uploads();
