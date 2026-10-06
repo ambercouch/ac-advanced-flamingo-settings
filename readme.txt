@@ -110,6 +110,10 @@ Yes. The Address Book can be disabled entirely from the settings.
 * **Import**: Upload a previously exported JSON file to restore messages.
 * Existing messages are automatically skipped, and a summary is shown on completion.
 
+= Is there a reusable import/export API for add-ons? =
+
+Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral services with `acafs_plugin()->export_service()` and `acafs_plugin()->import_service()`. The export service provides `count()` and `export_to_file()`, while the import service provides `read_file()` and `import_batch()`. These APIs return structured results or `WP_Error` values and do not depend on an admin HTTP request.
+
 == Screenshots ==
 
 1. **Settings Page** – Configure Flamingo behaviour and plugin options.

@@ -5,8 +5,16 @@ class ACAFS_Import {
 
 	protected $import_process;
 
-	public function __construct( $import_process ) {
+	/**
+	 * Reusable import service.
+	 *
+	 * @var ACAFS_Import_Service
+	 */
+	private $import_service;
+
+	public function __construct( $import_process, ACAFS_Import_Service $import_service ) {
 		$this->import_process = $import_process;
+		$this->import_service = $import_service;
 
 		add_action( 'admin_post_acafs_import_flamingo_messages', array( $this, 'acafs_import_flamingo_messages' ) );
 		add_action( 'acafs_render_import_export_page', array( $this, 'acafs_render_import_section' ) );
@@ -28,15 +36,18 @@ class ACAFS_Import {
 		}
 
 		// File validation
-		if ( ! isset( $_FILES['flamingo_import_file'] ) || empty( $_FILES['flamingo_import_file']['tmp_name'] ) ) {
+		if (
+			! isset( $_FILES['flamingo_import_file'] ) ||
+			empty( $_FILES['flamingo_import_file']['tmp_name'] ) ||
+			! isset( $_FILES['flamingo_import_file']['error'] ) ||
+			UPLOAD_ERR_OK !== (int) $_FILES['flamingo_import_file']['error']
+		) {
 			wp_die( esc_html__( 'No file uploaded. Please select a valid JSON file.', 'ac-advanced-flamingo-settings' ) );
 		}
 
-		$file_content = file_get_contents( $_FILES['flamingo_import_file']['tmp_name'] );
-		$messages     = json_decode( $file_content, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			wp_die( esc_html__( 'Invalid JSON file. Please check the format and try again.', 'ac-advanced-flamingo-settings' ) );
+		$messages = $this->import_service->read_file( $_FILES['flamingo_import_file']['tmp_name'] );
+		if ( is_wp_error( $messages ) ) {
+			wp_die( esc_html( $messages->get_error_message() ) );
 		}
 
 		$chunks = array_chunk( $messages, 50 );

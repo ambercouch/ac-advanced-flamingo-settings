@@ -51,6 +51,20 @@ if ( file_exists( $autoload ) ) {
 //require ACAFS_PLUGIN_DIR . '/lib/Admin/Flamingo/class-acafs-flamingo-file-linker.php';
 require ACAFS_PLUGIN_INC_DIR . '/class-acafs-plugin.php';
 
+/**
+ * Retrieve the initialized ACAFS plugin instance.
+ *
+ * Add-ons should use the service accessors on this object instead of
+ * instantiating ACAFS internals directly.
+ *
+ * @return ACAFS_Plugin|null Plugin instance, or null before initialization.
+ */
+function acafs_plugin() {
+	return isset( $GLOBALS['acafs_plugin'] ) && $GLOBALS['acafs_plugin'] instanceof ACAFS_Plugin
+		? $GLOBALS['acafs_plugin']
+		: null;
+}
+
 if ( class_exists( \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker::class ) ) {
 	( new \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker() )->register();
 }
@@ -58,5 +72,5 @@ if ( class_exists( \ACAFS\Admin\Flamingo\ACAFS_Flamingo_File_Linker::class ) ) {
 
 // Initialize the plugin
 if ( class_exists( 'ACAFS_Plugin' ) ) {
-	new ACAFS_Plugin();
+	$GLOBALS['acafs_plugin'] = new ACAFS_Plugin();
 }
