@@ -5,6 +5,26 @@ use background\ACAFS_Background_Import;
 defined( 'ABSPATH' ) || exit;
 
 class ACAFS_Plugin {
+	/**
+	 * Reusable export service.
+	 *
+	 * @var ACAFS_Export_Service
+	 */
+	private $export_service;
+
+	/**
+	 * Reusable import service.
+	 *
+	 * @var ACAFS_Import_Service
+	 */
+	private $import_service;
+
+	/**
+	 * Background import queue adapter.
+	 *
+	 * @var ACAFS_Background_Import
+	 */
+	private $import_process;
 
 	/**
 	 * Constructor - Initializes the plugin.
@@ -27,6 +47,10 @@ class ACAFS_Plugin {
 	 * Load all required class files.
 	 */
 	private function load_dependencies() {
+		// Public services for admin adapters and third-party add-ons.
+		require_once ACAFS_PLUGIN_INC_DIR . 'services/class-acafs-export-service.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'services/class-acafs-import-service.php';
+
 		// Core setup
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-hooks.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-admin.php';
@@ -53,8 +77,11 @@ class ACAFS_Plugin {
 	 * Instantiate and initialize plugin modules.
 	 */
 	private function init_modules() {
+		$this->export_service = new ACAFS_Export_Service();
+		$this->import_service = new ACAFS_Import_Service();
+
 		// Background import handler
-		$this->import_process = new ACAFS_Background_Import();
+		$this->import_process = new ACAFS_Background_Import( $this->import_service );
 
 		// Core modules
 		new ACAFS_Hooks();
@@ -64,8 +91,8 @@ class ACAFS_Plugin {
 		//        // Features
 		new ACAFS_Columns();
 		//new ACAFS_Single_Message();
-		new ACAFS_Export( $this->import_process ); // Pass background import if needed
-		new ACAFS_Import( $this->import_process );
+		new ACAFS_Export( $this->export_service );
+		new ACAFS_Import( $this->import_process, $this->import_service );
 		new ACAFS_Uploaded_Files();
 		if ( get_option( 'acafs_enable_persistent_uploads', false ) ) {
 			new ACAFS_CF7_Persist_Uploads();
@@ -75,6 +102,28 @@ class ACAFS_Plugin {
 		if ( class_exists( 'ACAFS_Compat_Divi' ) ) {
 			new ACAFS_Compat_Divi();
 		}
+	}
+
+	/**
+	 * Retrieve the reusable Flamingo export service.
+	 *
+	 * This is the supported export API for ACAFS add-ons.
+	 *
+	 * @return ACAFS_Export_Service
+	 */
+	public function export_service() {
+		return $this->export_service;
+	}
+
+	/**
+	 * Retrieve the reusable Flamingo import service.
+	 *
+	 * This is the supported import API for ACAFS add-ons.
+	 *
+	 * @return ACAFS_Import_Service
+	 */
+	public function import_service() {
+		return $this->import_service;
 	}
 
 
