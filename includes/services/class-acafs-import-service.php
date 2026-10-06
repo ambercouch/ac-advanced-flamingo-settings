@@ -149,8 +149,11 @@ class ACAFS_Import_Service {
 				}
 			}
 
-			if ( $message['channel_id'] > 0 ) {
-				$term_result = wp_set_object_terms( $post_id, $message['channel_id'], 'flamingo_inbound_channel', false );
+			$channel_term_id = $this->resolve_channel_term_id( $message );
+			if ( is_wp_error( $channel_term_id ) ) {
+				$result['errors'][] = $channel_term_id;
+			} elseif ( $channel_term_id > 0 ) {
+				$term_result = wp_set_object_terms( $post_id, $channel_term_id, 'flamingo_inbound_channel', false );
 				if ( is_wp_error( $term_result ) ) {
 					$result['errors'][] = $term_result;
 				}
@@ -199,9 +202,15 @@ class ACAFS_Import_Service {
 			return $this->invalid_message_error( $index, __( 'the meta field is invalid', 'ac-advanced-flamingo-settings' ) );
 		}
 
-		$message['post_author'] = isset( $message['post_author'] ) ? (int) $message['post_author'] : 0;
-		$message['channel_id']  = isset( $message['channel_id'] ) ? (int) $message['channel_id'] : 0;
-		$message['meta']        = isset( $message['meta'] ) ? $message['meta'] : array();
+		$message['post_author']     = isset( $message['post_author'] ) ? (int) $message['post_author'] : 0;
+		$message['channel_id']      = isset( $message['channel_id'] ) ? (int) $message['channel_id'] : 0;
+		$message['channel_slug']    = isset( $message['channel_slug'] ) && is_string( $message['channel_slug'] )
+			? sanitize_title( $message['channel_slug'] )
+			: '';
+		$message['channel_name']    = isset( $message['channel_name'] ) && is_string( $message['channel_name'] )
+			? sanitize_text_field( $message['channel_name'] )
+			: '';
+		$message['meta']            = isset( $message['meta'] ) ? $message['meta'] : array();
 
 		foreach ( $message['meta'] as $key => $values ) {
 			if ( ! is_string( $key ) || ! is_array( $values ) ) {
@@ -216,6 +225,53 @@ class ACAFS_Import_Service {
 		}
 
 		return $message;
+	}
+
+	/**
+	 * Resolve an exported channel against this site's taxonomy.
+	 *
+	 * Numeric term IDs in legacy exports are deliberately not used: term IDs are
+	 * site-specific and cannot safely identify the source channel. Such messages
+	 * remain unassigned. New exports use the stable slug, reusing a destination
+	 * term when possible and creating it only when it is missing.
+	 *
+	 * @param array $message Normalized exported message.
+	 * @return int|WP_Error Destination term ID, zero when no safe assignment exists,
+	 *                      or an error when term creation fails.
+	 */
+	private function resolve_channel_term_id( array $message ) {
+		$taxonomy = 'flamingo_inbound_channel';
+		$slug     = $message['channel_slug'];
+
+		if ( '' === $slug || ! taxonomy_exists( $taxonomy ) ) {
+			return 0;
+		}
+
+		$term = get_term_by( 'slug', $slug, $taxonomy );
+		if ( $term instanceof WP_Term ) {
+			return (int) $term->term_id;
+		}
+
+		$name     = '' !== $message['channel_name'] ? $message['channel_name'] : $slug;
+		$inserted = wp_insert_term(
+			$name,
+			$taxonomy,
+			array( 'slug' => $slug )
+		);
+
+		if ( is_wp_error( $inserted ) ) {
+			// Another worker may have created the same term between lookup and insert.
+			if ( 'term_exists' === $inserted->get_error_code() ) {
+				$term = get_term_by( 'slug', $slug, $taxonomy );
+				if ( $term instanceof WP_Term ) {
+					return (int) $term->term_id;
+				}
+			}
+
+			return $inserted;
+		}
+
+		return isset( $inserted['term_id'] ) ? (int) $inserted['term_id'] : 0;
 	}
 
 	/**

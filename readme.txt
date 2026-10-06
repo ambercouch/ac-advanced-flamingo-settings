@@ -124,6 +124,12 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 
 == Changelog ==
 
+= 1.5.1 =
+
+* Make Flamingo message channels portable between sites by exporting their slug and name.
+* Resolve imported channels by slug and create missing channels without duplicating existing terms.
+* Leave channels unassigned when importing legacy exports that contain only a site-specific numeric channel ID, preventing accidental assignment to an unrelated channel.
+
 = 1.5.0 =
 
 * Improve the Uploaded Files admin page with image thumbnails for image uploads.
@@ -175,6 +181,9 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 * Initial release with enhanced Flamingo settings and message management.
 
 == Upgrade Notice ==
+
+= 1.5.1 =
+Makes exported Flamingo channel assignments portable between WordPress installations. No database migration or upgrade action is required.
 
 = 1.5.0 =
 Improves the Uploaded Files admin page with thumbnails, file-type icons, and direct download buttons. Also introduces a new Integrations screen for managing optional add-ons.

@@ -51,7 +51,7 @@ class ACAFS_Export_Service {
 	 * Export published Flamingo inbound messages to a JSON file.
 	 *
 	 * The JSON representation intentionally remains a top-level list containing
-	 * raw post rows with the existing meta and channel_id additions.
+	 * raw post rows with the existing meta and channel additions.
 	 *
 	 * @param string $destination Absolute destination file path.
 	 * @param array  $args        Optional filters documented in count().
@@ -89,12 +89,21 @@ class ACAFS_Export_Service {
 			}
 
 			foreach ( $rows as $message ) {
-				$message_id           = (int) $message['ID'];
-				$message['meta']       = get_post_meta( $message_id );
-				$terms                 = wp_get_post_terms( $message_id, 'flamingo_inbound_channel', array( 'fields' => 'ids' ) );
-				$message['channel_id'] = ! is_wp_error( $terms ) && ! empty( $terms ) ? (int) $terms[0] : 0;
-				$messages[]            = $message;
-				$last_id               = $message_id;
+				$message_id             = (int) $message['ID'];
+				$message['meta']         = get_post_meta( $message_id );
+				$message['channel_id']   = 0;
+				$message['channel_slug'] = '';
+				$message['channel_name'] = '';
+				$terms                   = wp_get_post_terms( $message_id, 'flamingo_inbound_channel' );
+
+				if ( ! is_wp_error( $terms ) && ! empty( $terms ) && $terms[0] instanceof WP_Term ) {
+					$message['channel_id']   = (int) $terms[0]->term_id;
+					$message['channel_slug'] = (string) $terms[0]->slug;
+					$message['channel_name'] = (string) $terms[0]->name;
+				}
+
+				$messages[] = $message;
+				$last_id    = $message_id;
 			}
 		} while ( count( $rows ) === $args['batch_size'] );
 
