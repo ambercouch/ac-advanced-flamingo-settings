@@ -1,7 +1,10 @@
-.git
-.github
-tests
-build
-phpstan.neon
-phpcs.xml.dist
-composer.lock
+/.git
+/.github
+/tests
+/build
+/phpstan.neon
+/phpcs.xml.dist
+/composer.lock
+/.gitignore
+/.gitattributes
+/.distignore
