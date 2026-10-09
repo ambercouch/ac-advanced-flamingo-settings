@@ -5,7 +5,7 @@ Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 5.4
 Tested up to: 7.1
 Requires PHP: 7.2
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,16 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 
 == Changelog ==
 
+= 1.6.1 =
+* Corrected the internal ACAFS version constant.
+* Added missing release notes for version 1.6.0.
+
+= 1.6.0 =
+* Improved Flamingo message import/export portability between different WordPress sites.
+* Channels are now preserved correctly when importing messages into a site where taxonomy term IDs differ.
+* Added reusable import/export services for integrations and add-ons.
+* Improved validation and reliability of message import/export processing.
+
 = 1.5.1 =
 
 * Make Flamingo message channels portable between sites by exporting their slug and name.
@@ -181,6 +191,14 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 * Initial release with enhanced Flamingo settings and message management.
 
 == Upgrade Notice ==
+
+== Upgrade Notice ==
+
+= 1.6.1 =
+Maintenance release correcting the internal plugin version value and completing the 1.6.0 release documentation.
+
+= 1.6.0 =
+Improves message migration between WordPress sites by preserving Flamingo channels reliably during export and import.
 
 = 1.5.1 =
 Makes exported Flamingo channel assignments portable between WordPress installations. No database migration or upgrade action is required.
