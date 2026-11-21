@@ -5,7 +5,7 @@ Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 5.4
 Tested up to: 7.1
 Requires PHP: 7.2
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -124,6 +124,9 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 
 == Changelog ==
 
+= 1.6.2 =
+* Corrected duplicate detection during message imports when WordPress sanitises message titles.
+
 = 1.6.1 =
 * Corrected the internal ACAFS version constant.
 * Added missing release notes for version 1.6.0.
@@ -185,6 +188,9 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 * Initial release with enhanced Flamingo settings and message management.
 
 == Upgrade Notice ==
+
+= 1.6.2 =
+Prevents duplicate Flamingo messages when importing exports whose message titles are normalised by WordPress.
 
 
 = 1.6.1 =

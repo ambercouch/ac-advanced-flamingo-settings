@@ -83,6 +83,10 @@ class ACAFS_Import_Service {
 				continue;
 			}
 
+			// Use the imported representation for lookup, hashing, and insertion.
+			$message['post_title']   = sanitize_text_field( $message['post_title'] );
+			$message['post_content'] = wp_kses_post( $message['post_content'] );
+
 			$hash = $this->get_message_hash( $message['post_title'], $message['post_content'] );
 			if ( isset( $message_hashes[ $hash ] ) ) {
 				++$result['skipped'];
@@ -121,8 +125,8 @@ class ACAFS_Import_Service {
 
 			$post_id = wp_insert_post(
 				array(
-					'post_title'   => sanitize_text_field( $message['post_title'] ),
-					'post_content' => wp_kses_post( $message['post_content'] ),
+					'post_title'   => $message['post_title'],
+					'post_content' => $message['post_content'],
 					'post_status'  => 'publish',
 					'post_type'    => 'flamingo_inbound',
 					'post_date'    => $message['post_date'],
