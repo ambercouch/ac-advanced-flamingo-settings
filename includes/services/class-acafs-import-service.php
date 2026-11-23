@@ -105,7 +105,7 @@ class ACAFS_Import_Service {
 		$query        = $wpdb->prepare( $sql, ...$query_args );
 		$existing     = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		if ( null === $existing ) {
+		if ( null === $existing || ! empty( $wpdb->last_error ) ) {
 			$error = new WP_Error( 'acafs_import_duplicate_query_failed', $wpdb->last_error );
 			$result['failed'] += count( $message_hashes );
 			$result['errors'][] = $error;
@@ -149,7 +149,18 @@ class ACAFS_Import_Service {
 
 			foreach ( $message['meta'] as $key => $values ) {
 				foreach ( $values as $value ) {
-					update_post_meta( $post_id, sanitize_key( $key ), maybe_unserialize( $value ) );
+					// Each exported value represents one row, including identical values.
+					// Metadata APIs unslash input; protect JSON and literal backslashes.
+					$meta_id = add_post_meta( $post_id, wp_slash( $key ), wp_slash( maybe_unserialize( $value ) ), false );
+					if ( false === $meta_id ) {
+						++$result['failed'];
+						$result['errors'][] = new WP_Error( 'acafs_import_meta_failed', __( 'Message metadata could not be inserted.', 'ac-advanced-flamingo-settings' ) );
+						// Remove this incomplete message so a retry is not skipped as a duplicate.
+						if ( ! wp_delete_post( $post_id, true ) ) {
+							$result['errors'][] = new WP_Error( 'acafs_import_cleanup_failed', __( 'An incomplete imported message could not be removed.', 'ac-advanced-flamingo-settings' ) );
+						}
+						continue 3;
+					}
 				}
 			}
 
