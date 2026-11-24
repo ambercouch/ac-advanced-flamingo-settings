@@ -55,6 +55,7 @@ class ACAFS_Plugin {
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-hooks.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-admin.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-settings.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-divi-migration-safety.php';
 
 		// Features
 		require_once ACAFS_PLUGIN_INC_DIR . 'features/class-acafs-columns.php';
@@ -87,6 +88,7 @@ class ACAFS_Plugin {
 		new ACAFS_Hooks();
 		new ACAFS_Admin();
 		new ACAFS_Settings();
+		new ACAFS_Divi_Migration_Safety();
 		//
 		//        // Features
 		new ACAFS_Columns();
