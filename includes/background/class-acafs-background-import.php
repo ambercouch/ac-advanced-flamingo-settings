@@ -35,7 +35,15 @@ class ACAFS_Background_Import extends WP_Background_Process {
 			return false;
 		}
 
-		$this->import_service->import_batch( $messages_batch );
+		$result = $this->import_service->import_batch( $messages_batch );
+		$totals = get_transient( 'acafs_import_result' );
+		if ( ! is_array( $totals ) ) {
+			$totals = array();
+		}
+		foreach ( array( 'processed', 'inserted', 'skipped', 'failed' ) as $key ) {
+			$totals[ $key ] = ( isset( $totals[ $key ] ) ? (int) $totals[ $key ] : 0 ) + (int) $result[ $key ];
+		}
+		set_transient( 'acafs_import_result', $totals, DAY_IN_SECONDS );
 
 		return false;
 	}
@@ -43,7 +51,12 @@ class ACAFS_Background_Import extends WP_Background_Process {
 
 	protected function complete() {
 		delete_transient( 'acafs_import_started' ); // Clear in-progress marker
-		set_transient( 'acafs_import_success', 'completed' );
+		$result = get_transient( 'acafs_import_result' );
+		if ( is_array( $result ) && ! empty( $result['failed'] ) ) {
+			delete_transient( 'acafs_import_success' );
+		} else {
+			set_transient( 'acafs_import_success', 'completed' );
+		}
 		parent::complete();
 	}
 }

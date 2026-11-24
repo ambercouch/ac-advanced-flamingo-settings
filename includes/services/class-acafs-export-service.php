@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
+require_once __DIR__ . '/class-acafs-channel-hierarchy.php';
+
 /**
  * Reusable Flamingo message export service.
  *
@@ -89,18 +91,13 @@ class ACAFS_Export_Service {
 			}
 
 			foreach ( $rows as $message ) {
-				$message_id             = (int) $message['ID'];
-				$message['meta']         = get_post_meta( $message_id );
-				$message['channel_id']   = 0;
-				$message['channel_slug'] = '';
-				$message['channel_name'] = '';
-				$terms                   = wp_get_post_terms( $message_id, 'flamingo_inbound_channel' );
-
-				if ( ! is_wp_error( $terms ) && ! empty( $terms ) && $terms[0] instanceof WP_Term ) {
-					$message['channel_id']   = (int) $terms[0]->term_id;
-					$message['channel_slug'] = (string) $terms[0]->slug;
-					$message['channel_name'] = (string) $terms[0]->name;
+				$message_id = (int) $message['ID'];
+				$channels   = ( new ACAFS_Channel_Hierarchy() )->export_channels( $message_id );
+				if ( is_wp_error( $channels ) ) {
+					return $channels;
 				}
+				$message['meta'] = get_post_meta( $message_id );
+				$message         = array_merge( $message, $channels );
 
 				$messages[] = $message;
 				$last_id    = $message_id;

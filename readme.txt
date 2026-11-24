@@ -143,6 +143,35 @@ third-party failure. It does not modify existing messages or channel hierarchies
 Saving another Settings form does not clear the Divi preference when its field is
 absent. Use the explicit Divi capture checkbox to disable capture intentionally.
 
+== Channel hierarchy export/import ==
+
+New JSON exports retain the existing top-level message list and legacy channel
+fields, and add channel_paths. Each path is an ordered list of name/slug pairs
+from its root to an explicitly assigned channel. Every assigned channel includes
+its full ancestry, even when no message is assigned directly to its parents.
+Multiple assigned channels and deeper hierarchies are preserved.
+
+Both the admin background importer and CLI callers of the shared import service
+resolve these paths parent-first. Destination term IDs are discovered locally;
+exported numeric IDs are never used for mapping. Names are matched within the
+resolved parent, with slugs distinguishing otherwise ambiguous siblings. This
+also permits reuse when WordPress generated a different destination slug suffix.
+Existing channels are never moved to another parent to satisfy an import.
+
+Legacy exports without paths remain supported. A unique flat slug can reuse an
+existing channel, or create a flat root when absent. Numeric-ID-only exports stay
+unassigned because source IDs and missing ancestry cannot be reconstructed safely.
+Old files that never contained parents cannot recover that lost information.
+Malformed new path data fails validation rather than silently importing flat.
+
+Channel creation and persisted assignment failures count as failed messages, not
+successful imports. Incomplete messages are removed where possible so retries
+remain safe; any cleanup failure is reported with the incomplete post ID through
+the service result. Parents created before a later failure can remain and will be
+reused on retry. The admin completion notice reports imported, skipped and failed
+counts across batches. Existing title/content duplicate detection is unchanged:
+reimporting a duplicate does not rewrite its prior channel assignment.
+
 == Changelog ==
 
 = 1.6.2 =

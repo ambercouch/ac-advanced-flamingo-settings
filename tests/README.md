@@ -27,3 +27,27 @@ integration suite and real website submissions validate capture end to end.
 Runtime failures are cleared only on an observed capture with a persisted child
 channel. A normal import or readiness probe must not clear the failure. No import
 or export hierarchy-preservation behavior is changed by this feature.
+
+## Channel hierarchy regression
+
+```sh
+ddev wp --skip-plugins --skip-themes eval-file web/wp-content/plugins/ac-advanced-flamingo-settings/tests/channel-hierarchy-regression.php
+```
+
+This transactional suite requires installed Flamingo and the existing Settings
+vendor autoloader. It uses real JSON exports, taxonomy writes and the actual admin
+background worker, exposing protected worker methods only in a test fixture. No
+queue is dispatched, no plugin is activated and no email is sent. Temporary files
+are deleted and database fixtures are rolled back, including on assertion failure.
+
+Coverage includes child-only source assignments, multiple/deep paths, fresh and
+existing destinations, unrelated/conflicting term IDs, same names and source slug
+collisions under different parents, destination-generated slugs, repeated imports,
+legacy JSON formats, invalid paths, parent/child creation errors, real relationship
+INSERT failure/retry, concurrent term creation, legitimate quote/backslash/Unicode
+names, safe admin result reporting and corrupt source hierarchy cycles.
+
+The shared reader plus import_batch is the CLI/programmatic path. The admin queue
+passes the same self-contained message records to that service. Queue transport
+and completed success/error notices are exercised without making HTTP requests.
+Hierarchy changes do not repair channels on previously imported duplicates.

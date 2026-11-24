@@ -50,6 +50,9 @@ class ACAFS_Import {
 			wp_die( esc_html( $messages->get_error_message() ) );
 		}
 
+		delete_transient( 'acafs_import_result' );
+		delete_transient( 'acafs_import_success' );
+
 		$chunks = array_chunk( $messages, 50 );
 		foreach ( $chunks as $batch ) {
 			$this->import_process->push_to_queue( $batch );
@@ -66,8 +69,35 @@ class ACAFS_Import {
 	 * Show import notices
 	 */
 	public function acafs_show_import_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
 		$done    = get_transient( 'acafs_import_success' );
 		$started = get_transient( 'acafs_import_started' );
+
+		$result = get_transient( 'acafs_import_result' );
+		if ( ! $started && is_array( $result ) ) {
+			$failed = ! empty( $result['failed'] );
+			echo '<div class="notice ' . ( $failed ? 'notice-error' : 'notice-success' ) . ' is-dismissible"><h2>';
+			echo esc_html( $failed ? __( 'Import completed with failures', 'ac-advanced-flamingo-settings' ) : __( 'Import Complete', 'ac-advanced-flamingo-settings' ) );
+			echo '</h2><p>';
+			printf(
+				/* translators: 1: Processed messages, 2: Inserted messages, 3: Skipped duplicates, 4: Failed messages. */
+				esc_html__( 'Processed: %1$d. Imported: %2$d. Skipped: %3$d. Failed: %4$d.', 'ac-advanced-flamingo-settings' ),
+				(int) $result['processed'],
+				(int) $result['inserted'],
+				(int) $result['skipped'],
+				(int) $result['failed']
+			);
+			echo '</p>';
+			if ( $failed ) {
+				echo '<p>' . esc_html__( 'Some messages could not be restored. Check the import file and channel configuration before retrying failed messages. Review any incomplete records if cleanup failed.', 'ac-advanced-flamingo-settings' ) . '</p>';
+			}
+			echo '</div>';
+			delete_transient( 'acafs_import_result' );
+			delete_transient( 'acafs_import_success' );
+			return;
+		}
 
 		if ( $done ) {
 			?>
