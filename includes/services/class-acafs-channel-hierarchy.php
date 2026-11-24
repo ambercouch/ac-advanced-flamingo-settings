@@ -23,6 +23,7 @@ class ACAFS_Channel_Hierarchy {
 		global $wpdb;
 		$wpdb->last_error = '';
 		$terms            = wp_get_object_terms( $message_id, self::TAXONOMY );
+		// @phpstan-ignore notIdentical.alwaysFalse (WordPress taxonomy queries mutate the global database error after it is cleared; failure regressions verify this branch.)
 		if ( is_wp_error( $terms ) || '' !== $wpdb->last_error ) {
 			return $this->error( 'acafs_export_channel_failed' );
 		}
@@ -176,6 +177,7 @@ class ACAFS_Channel_Hierarchy {
 				'hide_empty' => false,
 			)
 		);
+		// @phpstan-ignore notIdentical.alwaysFalse (WordPress taxonomy queries mutate the global database error after it is cleared; failure regressions verify this branch.)
 		if ( is_wp_error( $terms ) || '' !== $wpdb->last_error ) {
 			return $this->error( 'acafs_import_channel_lookup_failed' );
 		}
@@ -255,6 +257,7 @@ class ACAFS_Channel_Hierarchy {
 				'hide_empty' => false,
 			)
 		);
+		// @phpstan-ignore notIdentical.alwaysFalse (WordPress taxonomy queries mutate the global database error after it is cleared; failure regressions verify this branch.)
 		if ( is_wp_error( $terms ) || '' !== $wpdb->last_error ) {
 			return $this->error( 'acafs_import_channel_lookup_failed' );
 		}

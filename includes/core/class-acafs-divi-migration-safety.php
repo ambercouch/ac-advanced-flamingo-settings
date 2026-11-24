@@ -109,7 +109,7 @@ class ACAFS_Divi_Migration_Safety {
 	/**
 	 * Persist only safe, known failure codes; never store fields or error data.
 	 *
-	 * @param WP_Error $error Capture failure.
+	 * @param mixed $error Capture failure supplied by an integration action.
 	 */
 	public function record_failure( $error ) {
 		if ( get_option( self::OPTION, false ) && is_wp_error( $error )

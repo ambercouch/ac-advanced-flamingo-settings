@@ -47,7 +47,7 @@ function acafs_divi_migration_notice( $monitor ) {
 global $wpdb;
 $original_user     = get_current_user_id();
 $original_hooks    = $GLOBALS['wp_filter'];
-$original_settings = $GLOBALS['wp_registered_settings'];
+$original_settings = isset( $GLOBALS['wp_registered_settings'] ) ? $GLOBALS['wp_registered_settings'] : array();
 $divi_theme        = static function () {
 	return 'Divi';
 };
@@ -120,13 +120,17 @@ try {
 	remove_all_actions( 'et_pb_contact_form_submit' );
 	acafs_divi_migration_assert( 'handler' === $monitor->get_status(), 'Active plugin without its callable capture handler still warns.' );
 
-	$standalone = ABSPATH . '../development/acafs-divi-contact-form-for-flamingo/';
+	$standalone = getenv( 'ACAFS_DIVI_TEST_PLUGIN_PATH' );
+	if ( false === $standalone || '' === $standalone ) {
+		$standalone = ABSPATH . '../development/acafs-divi-contact-form-for-flamingo/';
+	}
 	acafs_divi_migration_assert( file_exists( $standalone . 'acafs-divi-contact-form-for-flamingo.php' ), 'Real standalone fixture is available without installing or activating it.' );
 	require_once $standalone . 'acafs-divi-contact-form-for-flamingo.php';
 	require_once $standalone . 'includes/class-acafs-flamingo-message-creator.php';
 	require_once $standalone . 'includes/class-acafs-divi-integration.php';
 	$capture = new ACAFS_Divi_Flamingo_Integration( new ACAFS_Flamingo_Message_Creator() );
 	remove_all_actions( 'et_pb_contact_form_submit' );
+	// @phpstan-ignore arguments.count (Deliberately invalid registration tests rejection of a handler missing validation context.)
 	add_action( 'et_pb_contact_form_submit', array( $capture, 'capture_from_action' ), 10, 2 );
 	acafs_divi_migration_assert( 'handler' === $monitor->get_status(), 'A handler lacking Divi validation context cannot be treated as ready.' );
 	remove_action( 'et_pb_contact_form_submit', array( $capture, 'capture_from_action' ), 10 );

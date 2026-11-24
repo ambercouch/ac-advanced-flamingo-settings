@@ -89,10 +89,8 @@ class ACAFS_Plugin {
 		new ACAFS_Admin();
 		new ACAFS_Settings();
 		new ACAFS_Divi_Migration_Safety();
-		//
-		//        // Features
+		// Features.
 		new ACAFS_Columns();
-		//new ACAFS_Single_Message();
 		new ACAFS_Export( $this->export_service );
 		new ACAFS_Import( $this->import_process, $this->import_service );
 		new ACAFS_Uploaded_Files();
@@ -178,6 +176,7 @@ class ACAFS_Plugin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only menu navigation; this performs no option or data write.
 		if ( isset( $_GET['page'] ) && $_GET['page'] === 'flamingo' ) {
 			wp_safe_redirect( admin_url( 'admin.php?page=flamingo_inbound' ) );
 			exit;

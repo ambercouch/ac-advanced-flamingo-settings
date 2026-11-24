@@ -4,6 +4,8 @@ namespace background;
 
 use WP_Background_Process;
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! class_exists( 'WP_Background_Process' ) ) {
 	require_once plugin_dir_path( __FILE__ ) . 'lib/wp-background-processing.php';
 }

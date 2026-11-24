@@ -1,43 +1,75 @@
-name: Deploy to WordPress.org
-
+name: Authorised WordPress.org publication
 on:
-  push:
-    tags:
-      - '*'
-
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Approved release version (existing tag required)'
+        required: true
+        type: string
+      commit:
+        description: 'Approved full 40-character commit SHA'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type publish-ac-advanced-flamingo-settings-VERSION'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: wordpress-org-publication
+  cancel-in-progress: false
 jobs:
-  deploy:
+  authorise:
+    if: github.ref == 'refs/heads/master-new'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
+          ref: master-new
           fetch-depth: 0
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+          persist-credentials: false
+      - name: Verify explicit approval, tag, version and ancestry
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_BRANCH: ${{ github.ref }}
+        run: python3 scripts/authorize-release.py
+  deploy:
+    needs: authorise
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/master-new' &&
+      vars.ACAFS_WPORG_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: wordpress-org-production
+    steps:
+      - uses: actions/checkout@v4
         with:
-          php-version: '8.2'
-          tools: composer
-
-      # Build a production-ready folder (vendor, no dev deps)
-      - name: Install deps (prod)
-        run: composer install --no-dev --prefer-dist --optimize-autoloader
-
-      # Optional: run your checks again
-      # - name: Lint
-      # run: composer lint
-
-      # - name: PHPStan
-      #  run: composer stan
-
-      # Deploy
-      - name: Deploy to WordPress.org SVN
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - name: Prepare validated production files without an archive
+        run: |
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+          python3 tests/distribution.py
+          python3 scripts/build-dist.py --stage /tmp/acafs-wordpress-publish/ac-advanced-flamingo-settings
+      - name: Publish approved runtime tree
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
-          # If your slug != repo name, set it (or use a secret/var)
-          slug: ac-advanced-flamingo-settings
+          generate-zip: false
         env:
+          SLUG: ac-advanced-flamingo-settings
+          VERSION: ${{ inputs.version }}
+          BUILD_DIR: /tmp/acafs-wordpress-publish/ac-advanced-flamingo-settings
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+# Before enabling: configure required reviewers and environment-only SVN secrets.
+# ACAFS_WPORG_PUBLISH_ENABLED is deliberately unset/false until separately approved.

@@ -64,7 +64,7 @@ class ACAFS_Admin {
 			return;
 		}
 
-		wp_register_style( 'acafs-admin-style', false );
+		wp_register_style( 'acafs-admin-style', false, array(), ACAFS_VERSION );
 		wp_enqueue_style( 'acafs-admin-style' );
 
 		$custom_css = '

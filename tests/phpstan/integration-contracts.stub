@@ -1,0 +1,21 @@
+<?php
+/** Analysis-only contracts for optional integrations; never loaded by WordPress. */
+class WPCF7_ContactForm {}
+class WPCF7_Submission {
+    /** @return self|null */
+    public static function get_instance() {}
+    /** @return array */
+    public function uploaded_files() {}
+    /** @return array */
+    public function get_posted_data() {}
+}
+class Flamingo_Inbound_Message {
+    public static function register_post_type() {}
+}
+class ACAFS_Flamingo_Message_Creator {}
+class ACAFS_Divi_Flamingo_Integration {
+    public function __construct( ACAFS_Flamingo_Message_Creator $creator ) {}
+    public function capture_from_action( $fields, $error, $info ) {}
+    public function capture_from_post() {}
+    public function maybe_commit_fallback() {}
+}

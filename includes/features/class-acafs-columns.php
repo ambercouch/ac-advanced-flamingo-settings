@@ -100,17 +100,20 @@ class ACAFS_Columns {
 		}
 
 		$args = array(
-			'post_type'      => 'flamingo_inbound',
-			'posts_per_page' => 1,
-			'meta_query'     => array(
+			'post_type'              => 'flamingo_inbound',
+			'posts_per_page'         => 1,
+			'fields'                 => 'ids',
+			'no_found_rows'          => true,
+			'update_post_term_cache' => false,
+			'meta_query'             => array(
 				array(
 					'key'     => '_from_email',
 					'value'   => $email,
 					'compare' => '=',
 				),
 			),
-			'orderby'        => 'date',
-			'order'          => 'DESC',
+			'orderby'                => 'date',
+			'order'                  => 'DESC',
 		);
 
 		$messages = get_posts( $args );
@@ -120,7 +123,7 @@ class ACAFS_Columns {
 			return;
 		}
 
-		$last_id = $messages[0]->ID;
+		$last_id = (int) $messages[0];
 		$message = get_post_meta( $last_id, '_field_your-message', true );
 		$preview = $message ? wp_trim_words( $message, 10, '...' ) : esc_html__( 'Message unavailable', 'ac-advanced-flamingo-settings' );
 

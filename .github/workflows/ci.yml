@@ -1,36 +1,50 @@
-name: CI
-
+name: Release preparation checks
 on:
+  push:
+    branches: [master-new, 'release/**', 'development/**']
   pull_request:
-    branches: [ main, master ]
-
+    branches: [master-new]
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   php:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          tools: composer
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2, wp-cli:2.12.0
           coverage: none
-
-      - name: Composer install (no dev in prod build step later)
-        run: composer install --prefer-dist --no-progress
-
-      - name: PHPCS
-        run: vendor/bin/phpcs
-
-      - name: PHPStan
-        run: vendor/bin/phpstan analyse
-
-      - name: Build plugin ZIP
+      - name: PHP syntax
+        run: find . -name '*.php' -not -path './vendor/*' -not -path './build/*' -print0 | xargs -0 -n1 php -l
+      - name: Production dependencies and no-ZIP manifest validation
         run: |
-          bash ./build/build-zip.sh
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+          python3 tests/distribution.py
+      - name: Publication policy checks
+        run: python3 tests/publication-policy.py
+  standards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: plugin-zip
-          path: build/*.zip
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer lint
+      - run: composer stan
+      - run: composer compat
+# Full real-WordPress regression and Plugin Check results remain release gates.
+# Checks never create ZIPs. Tags never trigger publication.

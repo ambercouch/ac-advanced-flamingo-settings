@@ -2,15 +2,15 @@
 
 Contributors: amberCouch
 Tags: contact form 7, flamingo, contact form database, import, export
-Requires at least: 5.4
+Requires at least: 6.7
 Tested up to: 7.1
-Requires PHP: 7.2
-Stable tag: 1.6.2
+Requires PHP: 7.4
+Stable tag: 1.6.3
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AC Advanced Flamingo Settings enhances and extends the functionality of the CF7 Flamingo plugin by adding customization options, import/export tools, improved uploaded file handling, and optional integration management.
+Adds Flamingo import/export, message management, upload retention and optional form integrations.
 
 == Description ==
 
@@ -65,6 +65,12 @@ This plugin extends Flamingo, the Contact Form 7 database storage plugin, by add
   * A **Settings** link is added to the WordPress **Plugins** page for quick access.
 
 This plugin is ideal for sites that rely heavily on Flamingo and need better organisation, safer backups, optional long-term file retention, and easier management of compatible add-ons.
+
+== Requirements ==
+
+* WordPress 6.7 or later and PHP 7.4 or later.
+* Flamingo 2.6.3 or later, installed and active.
+* Divi capture requires the separate Divi integration; it is never installed or activated automatically.
 
 == Installation ==
 
@@ -174,6 +180,19 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 
 == Changelog ==
 
+= 1.6.3 =
+* Preserve repeated metadata rows, serialized values, zero values and literal backslashes during imports.
+* Report metadata and channel failures accurately and remove incomplete messages where possible for safe retries.
+* Preserve complete parent-child channel paths across sites without relying on source term IDs.
+* Reuse channels within their correct parent, including slug collisions and concurrent creation.
+* Preserve enabled Divi capture preferences and show persistent, actionable migration or capture-failure warnings.
+* Report accurate imported, skipped and failed totals in admin imports.
+* Harden admin import nonce and upload-origin validation and use safe redirects.
+* Report file-deletion failures accurately and avoid following external directory symlinks.
+* Use site-local export date defaults without applying the timezone offset twice.
+* Align supported requirements with WordPress 6.7+ and PHP 7.4+.
+
+
 = 1.6.2 =
 * Corrected duplicate detection during message imports when WordPress sanitises message titles.
 
@@ -238,6 +257,10 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 * Initial release with enhanced Flamingo settings and message management.
 
 == Upgrade Notice ==
+
+= 1.6.3 =
+Requires WordPress 6.7+ and PHP 7.4+. Back up before imports. Divi users: activate the standalone integration before replacing bundled capture, retain the preference, and verify one stored submission. Legacy files cannot reconstruct missing ancestors.
+
 
 = 1.6.2 =
 Prevents duplicate Flamingo messages when importing exports whose message titles are normalised by WordPress.

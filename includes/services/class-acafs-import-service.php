@@ -104,12 +104,12 @@ class ACAFS_Import_Service {
 		$placeholders = implode( ', ', array_fill( 0, count( $titles ), '%s' ) );
 		$sql          = "SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s AND post_title IN ($placeholders)";
 		$query_args   = array_merge( array( 'flamingo_inbound', 'publish' ), $titles );
-		$query        = $wpdb->prepare( $sql, ...$query_args );
-		$existing     = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$query        = $wpdb->prepare( $sql, ...$query_args ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL contains only internally generated placeholders/clauses; all values are passed separately.
+		$existing     = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared exact title/content duplicate lookup must see current writes, including earlier batches.
 
 		if ( null === $existing || ! empty( $wpdb->last_error ) ) {
-			$error = new WP_Error( 'acafs_import_duplicate_query_failed', $wpdb->last_error );
-			$result['failed'] += count( $message_hashes );
+			$error              = new WP_Error( 'acafs_import_duplicate_query_failed', $wpdb->last_error );
+			$result['failed']  += count( $message_hashes );
 			$result['errors'][] = $error;
 			return $result;
 		}
@@ -148,12 +148,6 @@ class ACAFS_Import_Service {
 			if ( is_wp_error( $post_id ) ) {
 				++$result['failed'];
 				$result['errors'][] = $post_id;
-				continue;
-			}
-
-			if ( ! $post_id ) {
-				++$result['failed'];
-				$result['errors'][] = new WP_Error( 'acafs_import_insert_failed', __( 'A Flamingo message could not be inserted.', 'ac-advanced-flamingo-settings' ) );
 				continue;
 			}
 
@@ -228,15 +222,15 @@ class ACAFS_Import_Service {
 			return $this->invalid_message_error( $index, __( 'the meta field is invalid', 'ac-advanced-flamingo-settings' ) );
 		}
 
-		$message['post_author']     = isset( $message['post_author'] ) ? (int) $message['post_author'] : 0;
-		$message['channel_id']      = isset( $message['channel_id'] ) ? (int) $message['channel_id'] : 0;
-		$message['channel_slug']    = isset( $message['channel_slug'] ) && is_string( $message['channel_slug'] )
+		$message['post_author']  = isset( $message['post_author'] ) ? (int) $message['post_author'] : 0;
+		$message['channel_id']   = isset( $message['channel_id'] ) ? (int) $message['channel_id'] : 0;
+		$message['channel_slug'] = isset( $message['channel_slug'] ) && is_string( $message['channel_slug'] )
 			? sanitize_title( $message['channel_slug'] )
 			: '';
-		$message['channel_name']    = isset( $message['channel_name'] ) && is_string( $message['channel_name'] )
+		$message['channel_name'] = isset( $message['channel_name'] ) && is_string( $message['channel_name'] )
 			? sanitize_text_field( $message['channel_name'] )
 			: '';
-		$message['meta']            = isset( $message['meta'] ) ? $message['meta'] : array();
+		$message['meta']         = isset( $message['meta'] ) ? $message['meta'] : array();
 
 		foreach ( $message['meta'] as $key => $values ) {
 			if ( ! is_string( $key ) || ! is_array( $values ) ) {

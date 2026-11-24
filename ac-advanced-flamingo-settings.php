@@ -2,9 +2,11 @@
 
 /**
  * Plugin Name:       AC Advanced Flamingo Settings
+ * Requires at least: 6.7
+ * Requires PHP:      7.4
  * Requires Plugins:  flamingo
  * Description:       Enhances Flamingo for Contact Form 7 with improved message management, import/export tools, persistent upload handling, uploaded file management, and optional integration support.
- * Version:           1.6.2
+ * Version:           1.6.3
  * Author:            AmberCouch
  * Author URI:        https://ambercouch.co.uk/
  * License:           GPLv2 or later
@@ -16,7 +18,7 @@ defined( 'ABSPATH' ) || die( 'You do not have the required permissions' );
 
 // Define plugin constants globally for accessibility
 if ( ! defined( 'ACAFS_VERSION' ) ) {
-	define( 'ACAFS_VERSION', '1.6.2' );
+	define( 'ACAFS_VERSION', '1.6.3' );
 }
 if ( ! defined( 'ACAFS_PLUGIN' ) ) {
 	define( 'ACAFS_PLUGIN', __FILE__ );
@@ -35,10 +37,10 @@ define( 'ACAFS_PLUGIN_TEMPLATE_DIR', plugin_dir_path( __FILE__ ) . 'templates/' 
 define( 'ACAFS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'ACAFS_PLUGIN_ASSETS_URL', ACAFS_PLUGIN_URL . 'assets/' );
 
-$autoload = ACAFS_PLUGIN_DIR . '/vendor/autoload.php';
+$acafs_autoload = ACAFS_PLUGIN_DIR . '/vendor/autoload.php';
 
-if ( file_exists( $autoload ) ) {
-	require_once $autoload;
+if ( file_exists( $acafs_autoload ) ) {
+	require_once $acafs_autoload;
 } else {
 	add_action(
 		'admin_notices',

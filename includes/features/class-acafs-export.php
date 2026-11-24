@@ -161,10 +161,10 @@ class ACAFS_Export {
 
 					<div id="date-filters">
 					<label for="start_date"><?php esc_html_e( 'Start Date:', 'ac-advanced-flamingo-settings' ); ?></label>
-					<input type="date" name="start_date" id="start_date" value="<?php echo esc_attr( wp_date( 'Y-m-01', current_time( 'timestamp' ) ) ); ?>">
+					<input type="date" name="start_date" id="start_date" value="<?php echo esc_attr( wp_date( 'Y-m-01' ) ); ?>">
 
 					<label for="end_date"><?php esc_html_e( 'End Date:', 'ac-advanced-flamingo-settings' ); ?></label>
-					<input type="date" name="end_date" id="end_date" value="<?php echo esc_attr( wp_date( 'Y-m-d', current_time( 'timestamp' ) ) ); ?>">
+					<input type="date" name="end_date" id="end_date" value="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>">
 					</div>
 
 					<p id="message-count"><?php esc_html_e( 'Messages to be exported: 0', 'ac-advanced-flamingo-settings' ); ?></p>

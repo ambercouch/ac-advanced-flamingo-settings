@@ -1,6 +1,14 @@
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/.distignore export-ignore
 /.github export-ignore
-/build export-ignore
 /tests export-ignore
-/phpstan.neon export-ignore
+/scripts export-ignore
+/build export-ignore
 /phpcs.xml.dist export-ignore
+/phpstan.neon export-ignore
 /composer.lock export-ignore
+/release-manifest.json export-ignore
+/DEVELOPMENT.md export-ignore
+/RELEASE-PREPARATION.md export-ignore
+/QUALITY-CHECKS.md export-ignore

@@ -1,7 +1,17 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
 parameters:
   level: 5
+  phpVersion: 70400
   paths:
     - .
   excludePaths:
     - vendor/*
     - build/*
+  scanDirectories:
+    - vendor/deliciousbrains/wp-background-processing
+  scanFiles:
+    - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
+    - tests/phpstan/integration-contracts.stub
+  bootstrapFiles:
+    - tests/phpstan/bootstrap.php

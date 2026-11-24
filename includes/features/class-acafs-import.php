@@ -31,7 +31,7 @@ class ACAFS_Import {
 		}
 
 		// Nonce check
-		if ( ! isset( $_POST['acafs_import_nonce'] ) || ! wp_verify_nonce( $_POST['acafs_import_nonce'], 'acafs_import_nonce' ) ) {
+		if ( ! isset( $_POST['acafs_import_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['acafs_import_nonce'] ) ), 'acafs_import_nonce' ) ) {
 			wp_die( esc_html__( 'Security check failed.', 'ac-advanced-flamingo-settings' ) );
 		}
 
@@ -45,7 +45,12 @@ class ACAFS_Import {
 			wp_die( esc_html__( 'No file uploaded. Please select a valid JSON file.', 'ac-advanced-flamingo-settings' ) );
 		}
 
-		$messages = $this->import_service->read_file( $_FILES['flamingo_import_file']['tmp_name'] );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A server-created upload path must not be altered; validate its provenance before reading.
+		$temporary_file = $_FILES['flamingo_import_file']['tmp_name'];
+		if ( ! is_string( $temporary_file ) || ! is_uploaded_file( $temporary_file ) ) {
+			wp_die( esc_html__( 'The uploaded import file is invalid.', 'ac-advanced-flamingo-settings' ) );
+		}
+		$messages = $this->import_service->read_file( $temporary_file );
 		if ( is_wp_error( $messages ) ) {
 			wp_die( esc_html( $messages->get_error_message() ) );
 		}
@@ -61,7 +66,7 @@ class ACAFS_Import {
 		$this->import_process->save()->dispatch();
 
 		set_transient( 'acafs_import_started', 'processing' );
-		wp_redirect( admin_url( 'admin.php?page=acafs-message-sync&import_started=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=acafs-message-sync&import_started=1' ) );
 		exit;
 	}
 

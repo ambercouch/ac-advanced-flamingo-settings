@@ -39,8 +39,8 @@ class ACAFS_Export_Service {
 
 		$where  = $this->get_where_clause( $args );
 		$sql    = "SELECT COUNT(*) FROM {$wpdb->posts} WHERE {$where['sql']}";
-		$query  = $wpdb->prepare( $sql, ...$where['params'] );
-		$result = $wpdb->get_var( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$query  = $wpdb->prepare( $sql, ...$where['params'] ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL contains only internally generated placeholders/clauses; all values are passed separately.
+		$result = $wpdb->get_var( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Every value is passed to prepare above; the internal SQL fragments contain no user input. Export counts must reflect current data.
 
 		if ( null === $result && ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'acafs_export_count_failed', $wpdb->last_error );
@@ -83,8 +83,8 @@ class ACAFS_Export_Service {
 		do {
 			$sql    = "SELECT * FROM {$wpdb->posts} WHERE {$where['sql']} AND ID > %d ORDER BY ID ASC LIMIT %d";
 			$params = array_merge( $where['params'], array( $last_id, $args['batch_size'] ) );
-			$query  = $wpdb->prepare( $sql, ...$params );
-			$rows   = $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$query  = $wpdb->prepare( $sql, ...$params ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL contains only internally generated placeholders/clauses; all values are passed separately.
+			$rows   = $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Prepared internal keyset query preserves complete post rows and must see current data, without stale query caches.
 
 			if ( null === $rows ) {
 				return new WP_Error( 'acafs_export_query_failed', $wpdb->last_error );
@@ -102,7 +102,8 @@ class ACAFS_Export_Service {
 				$messages[] = $message;
 				$last_id    = $message_id;
 			}
-		} while ( count( $rows ) === $args['batch_size'] );
+			$row_count = count( $rows );
+		} while ( $row_count === $args['batch_size'] );
 
 		$json = wp_json_encode( $messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
 		if ( false === $json ) {
@@ -195,7 +196,7 @@ class ACAFS_Export_Service {
 			'post_type = %s',
 			'post_status = %s',
 		);
-		$params   = array( 'flamingo_inbound', 'publish' );
+		$params  = array( 'flamingo_inbound', 'publish' );
 
 		if ( null !== $args['from'] ) {
 			$clauses[] = 'post_date >= %s';

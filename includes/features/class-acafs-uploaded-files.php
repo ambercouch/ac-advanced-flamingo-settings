@@ -218,7 +218,7 @@ class ACAFS_Uploaded_Files {
 	 */
 	private function get_file_mime_type( $full_path ) {
 		$mime_type = wp_check_filetype( basename( $full_path ) );
-		$mime      = isset( $mime_type['type'] ) ? $mime_type['type'] : '';
+		$mime      = $mime_type['type'];
 
 		if ( strpos( $mime, 'image/' ) === 0 ) {
 			$image_mime = wp_get_image_mime( $full_path );
@@ -284,7 +284,8 @@ class ACAFS_Uploaded_Files {
 
 		check_admin_referer( self::DOWNLOAD_NONCE );
 
-		$relative = isset( $_GET['file'] ) ? sanitize_text_field( wp_unslash( rawurldecode( $_GET['file'] ) ) ) : '';
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized after unslashing and URL decoding; decoding first preserves encoded path separators.
+		$relative = isset( $_GET['file'] ) && is_string( $_GET['file'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['file'] ) ) ) : '';
 		$paths    = $this->get_upload_paths();
 
 		if ( ! $paths || '' === $relative ) {
@@ -311,6 +312,7 @@ class ACAFS_Uploaded_Files {
 			header( 'Content-Length: ' . (string) absint( $file_size ) );
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- Stream a nonce/capability-checked, realpath-contained download without loading the complete file into memory.
 		readfile( $full_path );
 		exit;
 	}
@@ -382,7 +384,8 @@ class ACAFS_Uploaded_Files {
 			return false;
 		}
 
-		return (bool) unlink( $full_path );
+		wp_delete_file( $full_path );
+		return ! file_exists( $full_path );
 	}
 
 	/**
@@ -396,32 +399,41 @@ class ACAFS_Uploaded_Files {
 			return false;
 		}
 
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		if ( ! WP_Filesystem() ) {
+			return false;
+		}
+		global $wp_filesystem;
+		$success  = true;
 		$iterator = new RecursiveIteratorIterator(
 			new RecursiveDirectoryIterator( $base_dir, FilesystemIterator::SKIP_DOTS ),
 			RecursiveIteratorIterator::CHILD_FIRST
 		);
-
 		foreach ( $iterator as $file_info ) {
-			if ( $file_info->isDir() ) {
-				@rmdir( $file_info->getPathname() );
-				continue;
+			// Never follow directory symlinks outside the managed upload tree.
+			if ( $file_info->isDir() && ! $file_info->isLink() ) {
+				$deleted = $wp_filesystem->rmdir( $file_info->getPathname() );
+			} else {
+				$deleted = $wp_filesystem->delete( $file_info->getPathname(), false, 'f' );
 			}
-
-			@unlink( $file_info->getPathname() );
+			$success = $deleted && $success;
 		}
 
-		return true;
+		return $success;
 	}
 
 	/**
 	 * Render status notices.
 	 */
 	private function render_notices() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only status selection, with no mutation.
 		if ( empty( $_GET['acafs_status'] ) ) {
 			return;
 		}
 
-		$status  = sanitize_text_field( wp_unslash( $_GET['acafs_status'] ) );
+		$status  = sanitize_text_field( wp_unslash( $_GET['acafs_status'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Escaped, display-only status selection.
 		$message = '';
 		$class   = 'notice notice-success';
 

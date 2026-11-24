@@ -61,8 +61,8 @@ try {
 		$stored_message = $stored_messages[0];
 		acafs_regression_assert( sanitize_text_field( $fixture_title ) === $stored_message->post_title && wp_kses_post( $base['post_content'] ) === $stored_message->post_content, 'Stored title/content must remain sanitised.' );
 		acafs_regression_assert( 'example@example.com' === get_post_meta( $stored_message->ID, '_from', true ) && array( 'name' => 'Example' ) === get_post_meta( $stored_message->ID, '_fields', true ), 'Metadata must be preserved.' );
-		acafs_regression_assert( $base['meta']['Repeated-Key'] === get_post_meta( $stored_message->ID, 'Repeated-Key' ), 'Repeated values and exact key must survive without extra rows.' );
-		acafs_regression_assert( $base['meta']['_json'] === get_post_meta( $stored_message->ID, '_json' ), 'JSON backslashes must survive.' );
+		acafs_regression_assert( $base['meta']['Repeated-Key'] === get_post_meta( $stored_message->ID, 'Repeated-Key', false ), 'Repeated values and exact key must survive without extra rows.' );
+		acafs_regression_assert( $base['meta']['_json'] === get_post_meta( $stored_message->ID, '_json', false ), 'JSON backslashes must survive.' );
 		$slugs = wp_get_object_terms( $stored_message->ID, 'flamingo_inbound_channel', array( 'fields' => 'slugs' ) );
 		acafs_regression_assert( array( $channel ) === $slugs, 'Channel must be resolved by slug, ignoring source term ID.' );
 	}
@@ -78,7 +78,13 @@ try {
 	// Export actual stored rows, remove just our source, then import into a new post.
 	$file = wp_tempnam( 'acafs-roundtrip' );
 	try {
-		$export = ( new ACAFS_Export_Service() )->export_to_file( $file, array( 'from' => '2026-01-01', 'to' => '2026-01-01' ) );
+		$export = ( new ACAFS_Export_Service() )->export_to_file(
+			$file,
+			array(
+				'from' => '2026-01-01',
+				'to'   => '2026-01-01',
+			)
+		);
 		acafs_regression_assert( ! is_wp_error( $export ), 'Export must succeed.' );
 		$records = $service->read_file( $file );
 		acafs_regression_assert( ! is_wp_error( $records ), 'Export must pass import validation.' );
@@ -88,20 +94,20 @@ try {
 				continue;
 			}
 			$matched = true;
-			$before = get_post_meta( $stored_message->ID );
+			$before  = get_post_meta( $stored_message->ID );
 			wp_delete_post( $stored_message->ID, true );
 			$roundtrip = $service->import_batch( array( $record ) );
 			acafs_regression_assert( 1 === $roundtrip['inserted'] && 0 === $roundtrip['failed'], 'Roundtrip must insert a new message.' );
-			$id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_title = %s AND post_type = %s", $record['post_title'], 'flamingo_inbound' ) );
-			acafs_regression_assert( $before === get_post_meta( $id ), 'Roundtrip must preserve all metadata rows exactly.' );
+			$message_id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_title = %s AND post_type = %s", $record['post_title'], 'flamingo_inbound' ) );
+			acafs_regression_assert( $before === get_post_meta( $message_id ), 'Roundtrip must preserve all metadata rows exactly.' );
 			acafs_regression_assert( 1 === $service->import_batch( array( $record ) )['skipped'], 'Roundtrip reimport must not add rows.' );
 		}
 		acafs_regression_assert( $matched, 'Export must contain the source message.' );
 	} finally {
-		unlink( $file );
+		wp_delete_file( $file );
 	}
 
-	$fail_query = static function ( $query ) {
+	$fail_query           = static function ( $query ) {
 		return false !== strpos( $query, 'SELECT ID, post_title, post_content' ) ? 'SELECT * FROM acafs_nonexistent_regression_table' : $query;
 	};
 	$previous_suppression = $wpdb->suppress_errors( true );

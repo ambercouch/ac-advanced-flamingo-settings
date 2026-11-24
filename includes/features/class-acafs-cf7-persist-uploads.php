@@ -42,7 +42,7 @@ class ACAFS_CF7_Persist_Uploads {
 	 * @param WPCF7_ContactForm $contact_form Contact form instance.
 	 * @return void
 	 */
-	public function persist_and_replace( $contact_form ) {
+	public function persist_and_replace( $contact_form ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Required CF7 action callback signature.
 
 		if ( ! class_exists( 'WPCF7_Submission' ) ) {
 			return;
@@ -53,7 +53,7 @@ class ACAFS_CF7_Persist_Uploads {
 			return;
 		}
 
-		// ['field-name' => '/tmp/path' OR ['path1','path2']].
+		// CF7 returns either a single temporary path or a list of paths per field.
 		$uploaded = $submission->uploaded_files();
 		if ( ! is_array( $uploaded ) || empty( $uploaded ) ) {
 			return;
@@ -82,7 +82,7 @@ class ACAFS_CF7_Persist_Uploads {
 			$urls_for_field = array();
 
 			foreach ( $paths as $path ) {
-				if ( ! is_string( $path ) || '' === $path ) {
+				if ( ! is_string( $path ) ) {
 					continue;
 				}
 				if ( ! file_exists( $path ) ) {
@@ -136,7 +136,7 @@ class ACAFS_CF7_Persist_Uploads {
 			return $args;
 		}
 
-		if ( empty( $this->latest_urls ) || ! is_array( $this->latest_urls ) ) {
+		if ( empty( $this->latest_urls ) ) {
 			return $args;
 		}
 

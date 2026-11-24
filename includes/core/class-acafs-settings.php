@@ -133,7 +133,6 @@ class ACAFS_Settings {
 			'acafs-settings',
 			'acafs_upload_settings_section'
 		);
-
 	}
 
 	/**
@@ -249,12 +248,12 @@ class ACAFS_Settings {
 		);
 
 		$notice_map = array(
-			'divi' => array(
+			'divi'           => array(
 				'title'   => __( 'Using Divi forms?', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'Save Divi Contact Form submissions directly into Flamingo Inbound Messages with the Divi integration add-on.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Divi Integration', 'ac-advanced-flamingo-settings' ),
 			),
-			'wpbakery' => array(
+			'wpbakery'       => array(
 				'title'   => __( 'Using WPBakery forms?', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'Save WPBakery contact form submissions directly into Flamingo Inbound Messages with the WPBakery integration add-on.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View WPBakery Integration', 'ac-advanced-flamingo-settings' ),
@@ -264,7 +263,7 @@ class ACAFS_Settings {
 				'message' => __( 'Save Beaver Builder form submissions directly into Flamingo Inbound Messages with the Beaver Builder integration add-on.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Beaver Builder Integration', 'ac-advanced-flamingo-settings' ),
 			),
-			'enfold' => array(
+			'enfold'         => array(
 				'title'   => __( 'Using Enfold forms?', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'Save Enfold contact form submissions directly into Flamingo Inbound Messages with the Enfold integration add-on.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Enfold Integration', 'ac-advanced-flamingo-settings' ),
@@ -272,14 +271,14 @@ class ACAFS_Settings {
 		);
 
 		$active_notice_map = array(
-			'divi' => array(
+			'divi'           => array(
 				'title'   => __( 'Divi integration is active', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'Divi Contact Form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
 				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
 				'class'   => 'notice-success',
 			),
-			'wpbakery' => array(
+			'wpbakery'       => array(
 				'title'   => __( 'WPBakery integration is active', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'WPBakery form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
@@ -293,7 +292,7 @@ class ACAFS_Settings {
 				'url'     => add_query_arg( array( 'page' => 'flamingo_inbound' ), admin_url( 'admin.php' ) ),
 				'class'   => 'notice-success',
 			),
-			'enfold' => array(
+			'enfold'         => array(
 				'title'   => __( 'Enfold integration is active', 'ac-advanced-flamingo-settings' ),
 				'message' => __( 'Enfold form submissions can now be saved in Flamingo Inbound Messages alongside Contact Form 7 submissions.', 'ac-advanced-flamingo-settings' ),
 				'button'  => __( 'View Inbound Messages', 'ac-advanced-flamingo-settings' ),
@@ -380,7 +379,7 @@ class ACAFS_Settings {
 	}
 
 	public function acafs_is_theme_match( $needles ) {
-		$theme = wp_get_theme();
+		$theme     = wp_get_theme();
 		$haystacks = array(
 			strtolower( (string) $theme->get( 'Name' ) ),
 			strtolower( (string) $theme->get_template() ),
@@ -631,13 +630,14 @@ class ACAFS_Settings {
 			return $cached;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- WordPress has no distinct meta-key discovery API; this prepared query is object-cached below.
 		$meta_keys = $wpdb->get_col(
 			$wpdb->prepare(
 				"
             SELECT DISTINCT meta_key FROM {$wpdb->postmeta}
             WHERE meta_key LIKE %s
         ",
-				'_field_%'
+				$wpdb->esc_like( '_field_' ) . '%'
 			)
 		);
 
@@ -910,5 +910,4 @@ class ACAFS_Settings {
 		</div>
 		<?php
 	}
-
 }

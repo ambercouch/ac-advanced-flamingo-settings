@@ -1,0 +1,18 @@
+{
+  "slug": "ac-advanced-flamingo-settings",
+  "version": "1.6.3",
+  "entrypoint": "ac-advanced-flamingo-settings.php",
+  "version_constant": "ACAFS_VERSION",
+  "files": [
+    "ac-advanced-flamingo-settings.php",
+    "readme.txt",
+    "gpl-2.0.txt",
+    "composer.json"
+  ],
+  "directories": [
+    "assets",
+    "includes",
+    "lib"
+  ],
+  "production_vendor": true
+}
