@@ -149,6 +149,20 @@ third-party failure. It does not modify existing messages or channel hierarchies
 Saving another Settings form does not clear the Divi preference when its field is
 absent. Use the explicit Divi capture checkbox to disable capture intentionally.
 
+Upgrade from bundled capture during a controlled pause of public form submissions,
+including direct POST/AJAX requests. Back up first, preserve the saved preference,
+then install/activate Divi integration 1.0.2 and upgrade Settings to 1.6.3 while
+submissions remain paused. Older bundled builds can fail because of plugin load
+order or Divi field-array handling; overlap is not an uninterrupted-capture guarantee.
+Through controlled access, reload each relevant form with a fresh nonce and verify
+exactly one complete record per successful submission, no records for validation
+failures, correct fields/channels and unchanged existing records. Resolve notices
+and PHP errors before continuing. Clear cached forms and repeat the final check
+before restoring public submissions. Keep any rollback under maintenance; obsolete
+bundled capture is not a reliable fallback. The integration readme contains the
+full controlled upgrade procedure.
+
+
 == Channel hierarchy export/import ==
 
 New JSON exports retain the existing top-level message list and legacy channel
@@ -259,7 +273,7 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 == Upgrade Notice ==
 
 = 1.6.3 =
-Requires WordPress 6.7+ and PHP 7.4+. Back up before imports. Divi users: activate the standalone integration before replacing bundled capture, retain the preference, and verify one stored submission. Legacy files cannot reconstruct missing ancestors.
+Requires WordPress 6.7+ and PHP 7.4+. Pause public Divi submissions and back up. Install/activate Divi 1.0.2 and upgrade Settings while paused. Preserve the preference and verify complete capture before restoring traffic. Legacy files cannot reconstruct missing ancestors.
 
 
 = 1.6.2 =

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate a release manifest; staging and ZIP creation require explicit flags."""
 import argparse
+from fnmatch import fnmatchcase
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,41 @@ import shutil
 from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Known development/tooling paths only. Runtime config formats and unrelated
+# dotfiles are retained; licenses, Composer metadata and loader files are required.
+VENDOR_DEVELOPMENT_DIRECTORIES = frozenset({
+    '.git', '.github', '.circleci', '.gitlab', '.buildkite', '.devcontainer',
+    '.idea', '.vscode', '.husky', '.phpunit.cache', '.pytest_cache', '.mypy_cache',
+    '.ruff_cache', '.tox', '.nox', '.venv', '__pycache__', 'node_modules', 'vendor-bin',
+    'test', 'tests', 'Test', 'Tests', '__tests__', 'spec', 'specs', 'coverage',
+    'htmlcov', 'benchmark', 'benchmarks', 'bin',
+})
+VENDOR_DEVELOPMENT_FILES = (
+    '.git', '.gitignore', '.gitattributes', '.gitmodules', '.gitconfig',
+    '.editorconfig', '.travis.yml', '.travis.yaml', '.gitlab-ci.yml', '.gitlab-ci.yaml',
+    '.scrutinizer.yml', '.coveralls.yml', '.styleci.yml', 'appveyor.yml', '.appveyor.yml',
+    'azure-pipelines.yml', 'azure-pipelines.yaml', 'codecov.yml', '.codecov.yml',
+    '.phpcs*.xml*', 'phpcs*.xml*', '.phpcs-cache', '.phpcs-cache.*',
+    'phpunit*.xml*', '.phpunit*.xml*', '.phpunit.result.cache',
+    'phpstan*.neon', 'phpstan*.neon.dist', 'psalm.xml', 'psalm.xml.dist',
+    'psalm-baseline.xml', '.php-cs-fixer*.php', 'php-cs-fixer*.php',
+    '.php-cs-fixer.cache', '.php_cs', '.php_cs.dist', 'rector.php', 'rector-*.php',
+    'composer.lock', 'package.json', 'package-lock.json', 'npm-shrinkwrap.json',
+    'yarn.lock', 'pnpm-lock.yaml', 'bower.json', 'bower.lock',
+    'Makefile', 'Makefile.*', 'makefile', 'GNUmakefile', 'build.xml',
+    'gulpfile.*', 'Gruntfile.*', 'webpack.config.*', 'vite.config.*',
+    'tsconfig*.json', 'jsconfig.json', '.eslint*', '.prettier*', '.stylelint*',
+    'CONTRIBUTING', 'CONTRIBUTING.*',
+)
+
+
+def is_vendor_development_path(relative):
+    """Identify vendor tooling without excluding runtime assets or config by type."""
+    return bool(relative.parts) and relative.parts[0] == 'vendor' and (
+        any(part in VENDOR_DEVELOPMENT_DIRECTORIES for part in relative.parts[1:])
+        or any(fnmatchcase(relative.name, pattern) for pattern in VENDOR_DEVELOPMENT_FILES)
+    )
 
 
 def release_files(root=ROOT, vendor_source=None):
@@ -22,10 +58,7 @@ def release_files(root=ROOT, vendor_source=None):
         relative = Path(relative)
         if relative.is_absolute() or '..' in relative.parts or source.is_symlink():
             raise ValueError('Unsafe manifest source: ' + str(relative))
-        if relative.parts and relative.parts[0] == 'vendor' and (
-            any(part in {'.git', '.github', 'tests', 'bin', '__pycache__', 'node_modules'} for part in relative.parts[1:])
-            or relative.name in {'.gitignore', '.gitattributes', 'composer.lock', 'phpunit.xml', 'phpunit.xml.dist', 'Makefile'}
-        ):
+        if is_vendor_development_path(relative):
             return
         if source.is_dir():
             for child in sorted(source.iterdir()):
