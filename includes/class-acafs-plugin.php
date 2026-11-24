@@ -54,6 +54,7 @@ class ACAFS_Plugin {
 		// Core setup
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-hooks.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-admin.php';
+		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-cli-promotion.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-settings.php';
 		require_once ACAFS_PLUGIN_INC_DIR . 'core/class-acafs-divi-migration-safety.php';
 
@@ -87,6 +88,7 @@ class ACAFS_Plugin {
 		// Core modules
 		new ACAFS_Hooks();
 		new ACAFS_Admin();
+		new ACAFS_CLI_Promotion();
 		new ACAFS_Settings();
 		new ACAFS_Divi_Migration_Safety();
 		// Features.

@@ -194,6 +194,13 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 
 == Changelog ==
 
+= Unreleased =
+
+* Add contextual AC Advanced Flamingo CLI information below Import/Export and in the Integrations add-ons screen.
+* Permanently dismiss the Import/Export promotion per administrator; hide it automatically when CLI is active.
+* Show installed/active CLI status and clarify that AI workflows require authorised WP-CLI access.
+* Existing free import/export tools remain unchanged; no premium code, tracking or remote assets are loaded.
+
 = 1.6.3 =
 * Preserve repeated metadata rows, serialized values, zero values and literal backslashes during imports.
 * Report metadata and channel failures accurately and remove incomplete messages where possible for safe retries.

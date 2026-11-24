@@ -51,3 +51,21 @@ The shared reader plus import_batch is the CLI/programmatic path. The admin queu
 passes the same self-contained message records to that service. Queue transport
 and completed success/error notices are exercised without making HTTP requests.
 Hierarchy changes do not repair channels on previously imported duplicates.
+
+## CLI promotion regression
+
+```sh
+ddev wp --skip-plugins --skip-themes eval-file web/wp-content/plugins/ac-advanced-flamingo-settings/tests/cli-promotion-regression.php
+```
+
+Use a disposable WordPress database. The suite rolls back its users and metadata,
+restores plugin inventory filters/cache and tests absent/inactive/active CLI states,
+permission restrictions, persistent dismissal and the retained add-on listing.
+No plugin is installed or activated by this suite.
+
+Browser release checks: in separate administrator sessions, verify keyboard
+access to the product link and dismissal button, permanent dismissal for only the
+current user, and retained Integrations listing. Reject GET, missing/invalid nonce
+and subscriber dismissal requests. Check 1440px desktop and 390px mobile layouts,
+active CLI hiding, inactive CLI status, and no CLI cards on Dashboard, Settings or
+Inbound Messages. Use disposable users/data; never toggle plugins on production.

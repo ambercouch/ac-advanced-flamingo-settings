@@ -146,3 +146,61 @@ Production runtime and licence bytes match the previous tested candidate. Only
 readme.txt changed inside the RC2 archive. Preparation notes and development tests
 are excluded by the manifest. ZIP bytes are reproducible with the same dependency
 installation and build inputs.
+
+## Next release: contextual CLI add-on information
+
+Development changes are recorded under `Unreleased` in readme.txt. Keep the plugin
+version, stable tag and release manifest unchanged until the next release is
+explicitly authorised. The CLI card is included automatically by the existing
+`includes` manifest directory; no premium code or new dependency is distributed.
+
+The Message Sync card appears below the free tools, only for `manage_options`
+users without an active CLI plugin or saved dismissal. The stable user-meta key
+`acafs_cli_promotion_dismissed` must not be deleted/reset on upgrades. The existing
+Integrations screen serves as the add-ons catalogue and retains the CLI listing
+for every installed/active state. There are no new global notices or settings
+page promotions.
+
+Claims were checked against https://ambercouch.co.uk/ac-advanced-flamingo-cli/:
+scripted message export/import supports submission backups and migration between
+environments. Agents need authorised WP-CLI access; neither native AI-platform
+integration, a scheduler, automatic two-way sync nor full-site backups are claimed.
+The product URL is centralised in `ACAFS_CLI_Promotion::PRODUCT_URL`.
+
+Validation on 2026-11-24 (CDC DDEV PHP 8.3, Node 24 browser tooling):
+
+- PHP syntax, full WordPress-Extra, PHPCompatibility 7.4+ and level-5 PHPStan:
+  passed. Existing locked development tools were reused in an isolated source
+  copy; runtime vendor files and dependencies were unchanged.
+- Promotion regression: 11 assertions passed. Existing duplicate-import and
+  40 channel hierarchy/export/admin-worker regressions passed with rollback.
+- Playwright: 23 assertions passed on a fresh, disposable WordPress database in
+  CDC DDEV. Covered 1440px desktop/390px mobile, keyboard link/dismissal access,
+  separate forms, product URL, scoped visibility, invalid nonce and GET denial,
+  dismissal across sessions and users, inactive/active status, subscriber page
+  and POST denial, and actual persistent user metadata. Screenshots inspected.
+  Admin diagnostics contained only the intentional subscriber HTTP 403 results;
+  no unexpected failed requests, console warnings/errors or JavaScript errors.
+- Plugin Check: zero errors and no new warnings. The existing address-book
+  `meta_query` performance advisory in class-acafs-columns.php remains visible.
+- Distribution and publication-policy suites passed; no ZIP, tag or release
+  publication was created. Stable tag, plugin version and manifest unchanged.
+- Detailed Plugin Guidelines reviewed, especially 5, 7, 8, 11 and 12. Contextual,
+  dismissible, administrator-only copy uses bundled Dashicons, escaped URLs and
+  translated output. No global advertising, tracking parameters, analytics,
+  remote promotional assets/requests, installation/download flow or free-feature
+  restriction is introduced. Final WordPress.org acceptance remains its review
+  team's decision.
+- The separate CDC homepage validator returned HTTP 200 with no HTTP errors.
+  It reported a theme `wp.customize is not a function` exception, aborted third
+  party analytics/reCAPTCHA requests and an invalid-domain reCAPTCHA message.
+  These originate outside this admin-only change and remain outside its scope.
+
+Local review URLs (administrator login required):
+
+- https://cathedraldentalclinic.ddev.site/wp-admin/admin.php?page=acafs-message-sync
+- https://cathedraldentalclinic.ddev.site/wp-admin/admin.php?page=acafs-integrations
+
+CDC's CLI plugin was already active and remains active, so the first URL correctly
+hides the promotional panel. The disposable QA site's plugin activation and users
+were used to exercise the other states without altering CDC's data or options.
