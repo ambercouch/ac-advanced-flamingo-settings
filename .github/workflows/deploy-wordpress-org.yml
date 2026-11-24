@@ -1,54 +1,37 @@
-name: Authorised WordPress.org publication
+name: Deploy to WordPress.org
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Approved release version (existing tag required)'
-        required: true
-        type: string
-      commit:
-        description: 'Approved full 40-character commit SHA'
-        required: true
-        type: string
-      confirmation:
-        description: 'Type publish-ac-advanced-flamingo-settings-VERSION'
-        required: true
-        type: string
+  push:
+    tags:
+      - '*'
 permissions:
   contents: read
 concurrency:
   group: wordpress-org-publication
   cancel-in-progress: false
 jobs:
-  authorise:
-    if: github.ref == 'refs/heads/master-new'
+  validate:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !github.event.deleted
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: master-new
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify explicit approval, tag, version and ancestry
+      - name: Verify stable release tag and manifest
         env:
-          RELEASE_VERSION: ${{ inputs.version }}
-          RELEASE_COMMIT: ${{ inputs.commit }}
-          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-          RELEASE_BRANCH: ${{ github.ref }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_EVENT: ${{ github.event_name }}
         run: python3 scripts/authorize-release.py
   deploy:
-    needs: authorise
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/master-new' &&
-      vars.ACAFS_WPORG_PUBLISH_ENABLED == 'true'
+    needs: validate
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !github.event.deleted
     runs-on: ubuntu-latest
-    environment:
-      name: wordpress-org-production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: shivammathur/setup-php@v2
@@ -61,15 +44,14 @@ jobs:
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
           python3 tests/distribution.py
           python3 scripts/build-dist.py --stage /tmp/acafs-wordpress-publish/ac-advanced-flamingo-settings
-      - name: Publish approved runtime tree
+      - name: Deploy to WordPress.org SVN
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
           generate-zip: false
         env:
           SLUG: ac-advanced-flamingo-settings
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ github.ref_name }}
           BUILD_DIR: /tmp/acafs-wordpress-publish/ac-advanced-flamingo-settings
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-# Before enabling: configure required reviewers and environment-only SVN secrets.
-# ACAFS_WPORG_PUBLISH_ENABLED is deliberately unset/false until separately approved.
+# Publication is automatic for valid stable release tags, never branch pushes.
