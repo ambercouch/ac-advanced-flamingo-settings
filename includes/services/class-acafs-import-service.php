@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
+require_once __DIR__ . '/class-acafs-channel-hierarchy.php';
+
 /**
  * Reusable Flamingo message import service.
  *
@@ -123,6 +125,14 @@ class ACAFS_Import_Service {
 				continue;
 			}
 
+			$channels    = new ACAFS_Channel_Hierarchy();
+			$channel_ids = $channels->resolve_channels( $message );
+			if ( is_wp_error( $channel_ids ) ) {
+				++$result['failed'];
+				$result['errors'][] = $channel_ids;
+				continue;
+			}
+
 			$post_id = wp_insert_post(
 				array(
 					'post_title'   => $message['post_title'],
@@ -164,14 +174,15 @@ class ACAFS_Import_Service {
 				}
 			}
 
-			$channel_term_id = $this->resolve_channel_term_id( $message );
-			if ( is_wp_error( $channel_term_id ) ) {
-				$result['errors'][] = $channel_term_id;
-			} elseif ( $channel_term_id > 0 ) {
-				$term_result = wp_set_object_terms( $post_id, $channel_term_id, 'flamingo_inbound_channel', false );
-				if ( is_wp_error( $term_result ) ) {
-					$result['errors'][] = $term_result;
+			$assigned = $channels->assign_channels( $post_id, $channel_ids );
+			if ( is_wp_error( $assigned ) ) {
+				++$result['failed'];
+				$result['errors'][] = $assigned;
+				// Do not count an unchannelled message as inserted or skip its retry.
+				if ( ! wp_delete_post( $post_id, true ) ) {
+					$result['errors'][] = new WP_Error( 'acafs_import_cleanup_failed', __( 'An incomplete imported message could not be removed.', 'ac-advanced-flamingo-settings' ), array( 'post_id' => $post_id ) );
 				}
+				continue;
 			}
 
 			++$result['inserted'];
@@ -239,54 +250,15 @@ class ACAFS_Import_Service {
 			}
 		}
 
-		return $message;
-	}
-
-	/**
-	 * Resolve an exported channel against this site's taxonomy.
-	 *
-	 * Numeric term IDs in legacy exports are deliberately not used: term IDs are
-	 * site-specific and cannot safely identify the source channel. Such messages
-	 * remain unassigned. New exports use the stable slug, reusing a destination
-	 * term when possible and creating it only when it is missing.
-	 *
-	 * @param array $message Normalized exported message.
-	 * @return int|WP_Error Destination term ID, zero when no safe assignment exists,
-	 *                      or an error when term creation fails.
-	 */
-	private function resolve_channel_term_id( array $message ) {
-		$taxonomy = 'flamingo_inbound_channel';
-		$slug     = $message['channel_slug'];
-
-		if ( '' === $slug || ! taxonomy_exists( $taxonomy ) ) {
-			return 0;
-		}
-
-		$term = get_term_by( 'slug', $slug, $taxonomy );
-		if ( $term instanceof WP_Term ) {
-			return (int) $term->term_id;
-		}
-
-		$name     = '' !== $message['channel_name'] ? $message['channel_name'] : $slug;
-		$inserted = wp_insert_term(
-			$name,
-			$taxonomy,
-			array( 'slug' => $slug )
-		);
-
-		if ( is_wp_error( $inserted ) ) {
-			// Another worker may have created the same term between lookup and insert.
-			if ( 'term_exists' === $inserted->get_error_code() ) {
-				$term = get_term_by( 'slug', $slug, $taxonomy );
-				if ( $term instanceof WP_Term ) {
-					return (int) $term->term_id;
-				}
+		if ( array_key_exists( 'channel_paths', $message ) ) {
+			$paths = ( new ACAFS_Channel_Hierarchy() )->normalize_paths( $message['channel_paths'] );
+			if ( is_wp_error( $paths ) ) {
+				return $this->invalid_message_error( $index, __( 'the channel_paths field is invalid', 'ac-advanced-flamingo-settings' ) );
 			}
-
-			return $inserted;
+			$message['channel_paths'] = $paths;
 		}
 
-		return isset( $inserted['term_id'] ) ? (int) $inserted['term_id'] : 0;
+		return $message;
 	}
 
 	/**
