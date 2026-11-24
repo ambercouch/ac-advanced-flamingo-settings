@@ -79,7 +79,7 @@ class ACAFS_Settings {
 				'acafs_settings_group',
 				$integration['option_name'],
 				array(
-					'sanitize_callback' => array( $this, 'acafs_sanitize_checkbox' ),
+					'sanitize_callback' => array( $this, 'divi' === $integration['key'] ? 'acafs_sanitize_divi_capture' : 'acafs_sanitize_checkbox' ),
 				)
 			);
 		}
@@ -481,11 +481,34 @@ class ACAFS_Settings {
 					$grouped_integrations['available'],
 					'available'
 				);
+				foreach ( $this->acafs_get_integration_configs() as $integration ) {
+					if ( 'divi' === $integration['key'] && get_option( $integration['option_name'], false )
+						&& 'active' !== $this->acafs_get_integration_state( $integration['plugin_file'] ) ) {
+						echo '<p>' . esc_html__( 'Your saved Divi capture preference is retained while the integration is unavailable. Uncheck only if you intend to stop capturing Divi forms.', 'ac-advanced-flamingo-settings' ) . '</p>';
+						$this->acafs_render_integration_checkbox( $integration );
+					}
+				}
 				submit_button();
 				?>
 			</form>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Keep the saved Divi preference when another settings form omits it.
+	 *
+	 * Active Divi checkboxes submit an explicit zero when unchecked. Settings
+	 * API capability and nonce checks continue to protect all option writes.
+	 *
+	 * @param mixed $input Submitted checkbox value, or null when omitted.
+	 * @return string Sanitized preference.
+	 */
+	public function acafs_sanitize_divi_capture( $input ) {
+		if ( null === $input ) {
+			return get_option( 'acafs_enable_divi_contact_capture', '0' );
+		}
+		return $this->acafs_sanitize_checkbox( $input );
 	}
 
 	/**
@@ -801,6 +824,9 @@ class ACAFS_Settings {
 
 	public function acafs_render_integration_checkbox( $config ) {
 		$enabled = (bool) get_option( $config['option_name'], false );
+		if ( 'divi' === $config['key'] ) {
+			echo '<input type="hidden" name="' . esc_attr( $config['option_name'] ) . '" value="0">';
+		}
 		echo '<label>';
 		echo '<input type="checkbox" name="' . esc_attr( $config['option_name'] ) . '" value="1" ' . checked( 1, $enabled, false ) . '> ';
 		echo esc_html( $config['active_checkbox_label'] );

@@ -122,6 +122,27 @@ Yes. After ACAFS has loaded, integrations can retrieve the transport-neutral ser
 4. **Uploaded Files Page** – View, preview, download, and manage persisted file uploads.
 5. **Integrations Page** – View and manage optional Flamingo integrations.
 
+== Divi capture migration ==
+
+If you enabled Divi Contact Form capture in Settings 1.4.3, that saved preference
+is retained. Capture now requires the separate AC Divi Contact Form for Flamingo
+plugin. Settings does not install or activate integrations automatically.
+
+When capture is enabled but the integration is missing, inactive, lacks its
+capture handler or dependencies, administrators see a persistent recovery notice.
+Follow its instructions to restore the standalone integration, Flamingo and Divi,
+then submit a test form and verify exactly one complete Flamingo Inbound Message.
+Sites that never enabled capture, or explicitly disabled it, see no warning.
+
+The notice clears when the integration is ready. Reported message-storage or
+channel-assignment failures remain visible until a subsequent successful capture
+is observed. For partial saves, repair the existing record rather than creating a
+duplicate. The notice does not guarantee email delivery or diagnose every possible
+third-party failure. It does not modify existing messages or channel hierarchies.
+
+Saving another Settings form does not clear the Divi preference when its field is
+absent. Use the explicit Divi capture checkbox to disable capture intentionally.
+
 == Changelog ==
 
 = 1.6.2 =
