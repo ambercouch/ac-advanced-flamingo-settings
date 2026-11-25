@@ -1,6 +1,6 @@
-# Settings 1.6.3 release preparation
+# Settings 1.6.4 release preparation
 
-Base master-new: 52d5f85812929b61c879f3f64655fe88c4940118.
+Base master-new: 1ef98fa24c88275874f078c3747a88beee105413 (PR #21 merged).
 Preparation-branch commits and pushes are authorised. Merging, default-branch
 changes, tags, distribution ZIPs and publication remain separately gated.
 
@@ -29,7 +29,7 @@ For an approved local candidate build, install the locked dependencies and use t
 standard wrapper from a fresh build checkout (no vendor sanitation step):
 
 ```sh
-COMPOSER_ROOT_VERSION=1.6.3 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+COMPOSER_ROOT_VERSION=1.6.4 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 python3 tests/distribution.py
 bash build/build-zip.sh --build-zip /new/output.zip
 ```
@@ -41,7 +41,7 @@ overwritten. The manifest supplies a single plugin-directory prefix.
 
 CI checks PRs targeting master-new and preparation/development pushes without
 building ZIPs. WordPress.org publication follows the established 1.6.2 process:
-pushing a stable numeric release tag such as 1.6.3 automatically publishes to SVN.
+pushing a stable numeric release tag such as 1.6.4 automatically publishes to SVN.
 The tag must match the manifest version and resolve to the checked-out commit.
 Branches, deleted tags, prerelease/v-prefixed tags and mismatched versions cannot
 publish. No manual dispatch, enable variable or deployment environment is required.
@@ -51,7 +51,7 @@ Creating/pushing a release tag is the publication action and requires separate
 release approval. Do not create a tag during preparation.
 The default branch remains unchanged until separately approved.
 
-## Release order
+## Historical 1.6.3 coordinated release order
 
 Make Divi 1.0.2 available first. Pause public form submissions, including direct
 POST/AJAX traffic, and back up before changing plugins. Install/activate Divi1.0.2
@@ -123,7 +123,7 @@ with fresh nonces before restoring traffic. A successful page message, plugin
 activation or absence of an admin notice alone is insufficient. The customer-facing
 readme documents the step-by-step controlled procedure.
 
-## Verified RC2 build record
+## Historical 1.6.3 RC2 build record
 
 Package: `ac-advanced-flamingo-settings-1.6.3-rc.2.zip`.
 
@@ -147,11 +147,11 @@ readme.txt changed inside the RC2 archive. Preparation notes and development tes
 are excluded by the manifest. ZIP bytes are reproducible with the same dependency
 installation and build inputs.
 
-## Next release: contextual CLI add-on information
+## 1.6.4: contextual CLI add-on information
 
-Development changes are recorded under `Unreleased` in readme.txt. Keep the plugin
-version, stable tag and release manifest unchanged until the next release is
-explicitly authorised. The CLI card is included automatically by the existing
+Changes are recorded under `1.6.4` in readme.txt. The plugin header, runtime
+constant, stable tag and release manifest now agree on 1.6.4. Preparation is
+on `release/1.6.4-preparation`; merge approval remains separate from tag approval. The CLI card is included automatically by the existing
 `includes` manifest directory; no premium code or new dependency is distributed.
 
 The Message Sync card appears below the free tools, only for `manage_options`
@@ -204,3 +204,57 @@ Local review URLs (administrator login required):
 CDC's CLI plugin was already active and remains active, so the first URL correctly
 hides the promotional panel. The disposable QA site's plugin activation and users
 were used to exercise the other states without altering CDC's data or options.
+
+## 1.6.4 release validation — 2026-11-25
+
+PR #21 was merged into master-new at
+`1ef98fa24c88275874f078c3747a88beee105413` after successful CI and code review.
+The CDC plugin checkout was fast-forwarded and preparation continues on
+`release/1.6.4-preparation`. The header, ACAFS_VERSION, manifest, readme stable tag,
+changelog and current upgrade instructions agree on 1.6.4. Historical release
+notes and minimum dependency requirements retain their original version numbers.
+
+Verified against clean production staging, with a fresh locked `--no-dev`
+Composer install and no changes to the live plugin's vendor directory:
+
+- Distribution metadata, manifest, safe staging, runtime/vendor inclusion rules
+  and publication-policy suites pass. Staging contains 39 runtime files, without
+  development dependencies, tests, Git metadata or premium code. No ZIP was built.
+- Staged content SHA-256:
+  `3f990846470fe9dce4e88ed68adb77236b8fbc0fca83088d4ee019a9bfa4d442`.
+- Full WordPress-Extra, level-5 PHPStan and PHPCompatibility 7.4+ pass. The locked
+  full dependency audit reports no advisories or abandoned packages. Composer
+  validation with `--strict --no-check-publish` passes. Packagist-only validation
+  additionally requests the pre-existing missing package description; this plugin
+  is distributed via WordPress.org, and Composer metadata/dependencies are unchanged.
+- PHP syntax passes on 7.4.33, 8.2.33, 8.3.33, 8.4.24 and 8.5.9.
+- Real WordPress 6.7 regression suites pass on all five PHP runtimes. WordPress
+  7.1.3 passes on PHP 8.3.33. Each stack runs duplicate import, channel hierarchy,
+  Divi migration, upload security, code quality, CLI promotion, standalone Divi
+  integration and CLI bootstrap tests. Transactional fixture writes are rolled back.
+- Plugin Check runs every category against the staged runtime, with no excluded
+  directories/files, on WordPress 6.7/PHP 7.4 and WordPress 7.1.3/PHP 8.3. Both
+  report zero errors and the single existing address-book `meta_query` performance
+  advisory documented in QUALITY-CHECKS.md. No new findings.
+- Node 24 Playwright: all 23 desktop/mobile, keyboard, nonce/method/capability,
+  page-scope, plugin-state and cross-session/per-user dismissal assertions pass
+  against the staged runtime. Screenshots inspected. Browser diagnostics contain
+  only intentional subscriber HTTP 403 failures, with no unexpected JS errors or
+  failed requests.
+- Real CLI export/import integration suites also pass on WordPress 6.7/PHP 7.4
+  and WordPress 7.1.3/PHP 8.3, including roundtrips, cross-batch duplicates, metadata
+  preservation, partial failures/retry, exit codes and channel hierarchies.
+- PHP 8.5 emits the previously documented deprecation from WP-CLI 2.12.0's bundled
+  React Promise semicolon-switch syntax. This is not plugin code and is not hidden.
+
+Validation uses fresh, disposable databases in CDC DDEV, never CDC submissions or
+settings. The installed CDC plugin reports active version 1.6.4. Evidence logs are
+retained in the DDEV container at `/tmp/acafs164-evidence`; production staging is
+`/tmp/acafs164-stage/ac-advanced-flamingo-settings`.
+
+The tag-triggered publisher, stable-tag/manifest/commit validation, existing SVN
+secret references and deployment action are byte-for-byte unchanged. Preparation
+branch pushes cannot publish. No 1.6.4 tag exists locally or remotely. Open the
+preparation PR against master-new; its merge and the subsequent release-tag push
+remain subject to approval. Recheck the exact approved commit and CI before tagging.
+Live SVN credential validity still cannot be confirmed without publishing.
