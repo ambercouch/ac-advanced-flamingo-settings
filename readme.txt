@@ -5,7 +5,7 @@ Tags: contact form 7, flamingo, contact form database, import, export
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.6.3
+Stable tag: 1.6.4
 
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -151,7 +151,7 @@ absent. Use the explicit Divi capture checkbox to disable capture intentionally.
 
 Upgrade from bundled capture during a controlled pause of public form submissions,
 including direct POST/AJAX requests. Back up first, preserve the saved preference,
-then install/activate Divi integration 1.0.2 and upgrade Settings to 1.6.3 while
+then install/activate Divi integration 1.0.2 and upgrade Settings to 1.6.4 while
 submissions remain paused. Older bundled builds can fail because of plugin load
 order or Divi field-array handling; overlap is not an uninterrupted-capture guarantee.
 Through controlled access, reload each relevant form with a fresh nonce and verify
@@ -194,7 +194,7 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 
 == Changelog ==
 
-= Unreleased =
+= 1.6.4 =
 
 * Add contextual AC Advanced Flamingo CLI information below Import/Export and in the Integrations add-ons screen.
 * Permanently dismiss the Import/Export promotion per administrator; hide it automatically when CLI is active.
@@ -278,6 +278,9 @@ reimporting a duplicate does not rewrite its prior channel assignment.
 * Initial release with enhanced Flamingo settings and message management.
 
 == Upgrade Notice ==
+
+= 1.6.4 =
+Adds optional CLI add-on information to Import/Export and Integrations. The Import/Export panel can be permanently dismissed per administrator and is hidden when CLI is active. Existing free functionality is unchanged.
 
 = 1.6.3 =
 Requires WordPress 6.7+ and PHP 7.4+. Pause public Divi submissions and back up. Install/activate Divi 1.0.2 and upgrade Settings while paused. Preserve the preference and verify complete capture before restoring traffic. Legacy files cannot reconstruct missing ancestors.

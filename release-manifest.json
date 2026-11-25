@@ -1,6 +1,6 @@
 {
   "slug": "ac-advanced-flamingo-settings",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "entrypoint": "ac-advanced-flamingo-settings.php",
   "version_constant": "ACAFS_VERSION",
   "files": [
