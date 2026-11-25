@@ -459,6 +459,7 @@ class ACAFS_Settings {
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Flamingo Integrations', 'ac-advanced-flamingo-settings' ); ?></h1>
 			<p><?php esc_html_e( 'Enable optional integrations that capture submissions into Flamingo.', 'ac-advanced-flamingo-settings' ); ?></p>
+			<?php do_action( 'acafs_render_developer_addons' ); ?>
 			<form method="post" action="options.php">
 				<?php
 				settings_fields( 'acafs_settings_group' );
